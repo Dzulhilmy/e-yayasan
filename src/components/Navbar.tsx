@@ -14,6 +14,7 @@ import {
   Bell,
   User,
   LogOut,
+  ShieldCheck,
 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
@@ -32,6 +33,10 @@ const privateLinks = [
   { href: "/vault", label: "Vault", icon: FolderLock },
 ];
 
+const adminLinks = [
+  { href: "/admin/dashboard", label: "Admin", icon: ShieldCheck },
+];
+
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -42,7 +47,12 @@ export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
-  const navLinks = user ? privateLinks : publicLinks;
+  const isAdmin = !!(profile?.is_admin === true || profile?.meta?.is_admin === true);
+  const navLinks = user
+    ? isAdmin
+      ? [...privateLinks, ...adminLinks]
+      : privateLinks
+    : publicLinks;
 
   const getDisplayName = () => {
     if (profile?.full_name) return String(profile.full_name);
