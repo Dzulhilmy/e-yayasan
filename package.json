@@ -4,14 +4,26 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "create-admin": "node supabase/scripts/create_admin_user.js",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^3.0.63",
+    "@ai-sdk/react": "^3.0.184",
+    "@supabase/ssr": "^0.10.3",
+    "@supabase/supabase-js": "^2.105.4",
+    "ai": "^6.0.182",
+    "bcryptjs": "^2.4.3",
+    "framer-motion": "^12.38.0",
+    "jsonwebtoken": "^9.0.3",
+    "lucide-react": "^1.14.0",
     "next": "16.2.6",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "sonner": "^2.0.7",
+    "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

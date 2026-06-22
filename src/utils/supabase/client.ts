@@ -1,0 +1,15 @@
+import { createBrowserClient } from '@supabase/ssr'
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  console.warn(
+    '[Supabase] Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY. ' +
+    'Client-side Supabase requests will not connect.'
+  )
+}
+
+export function createClient() {
+  return createBrowserClient(SUPABASE_URL ?? '', SUPABASE_ANON_KEY ?? '')
+}
