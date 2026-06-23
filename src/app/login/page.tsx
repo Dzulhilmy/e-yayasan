@@ -1,353 +1,393 @@
-// src/app/login/page.tsx
-// e-YP Yayasan Perak — Login Page
-// Two-column split layout, no main navbar, NRIC-based login.
-// Self-contained — no external stores, no extra dependencies.
-
 'use client';
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, use } from 'react'
+import { login } from './actions'
+import Link from 'next/link'
+import { Eye, EyeOff, ArrowLeft, ShieldCheck, CreditCard } from 'lucide-react'
 
-// ─── Colour tokens ────────────────────────────────────────────────────────────
-
-const C = {
-  bg:      '#0f1923',
-  nav:     '#151e2b',
-  input:   '#202c42',
-  border:  '#253048',
-  gold:    '#c9882a',
-  goldHover: '#dd9933',
-  goldText:'#e8a83a',
-  text:    '#e8edf4',
-  muted:   '#7a8caa',
-  muted2:  '#4a5a72',
-  red:     '#e05050',
-  redBg:   '#2a1010',
-  redText: '#f0a0a0',
-} as const;
-
-// ─── Inline SVG icons (no external icon package) ──────────────────────────────
-
-const IcoArrowLeft = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M19 12H5M12 19l-7-7 7-7"/>
-  </svg>
-);
-const IcoEye = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-    <circle cx="12" cy="12" r="3"/>
-  </svg>
-);
-const IcoEyeOff = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a18.5 18.5 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-    <line x1="1" y1="1" x2="23" y2="23"/>
-  </svg>
-);
-const IcoAlert = () => (
-  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10"/>
-    <line x1="12" y1="8" x2="12" y2="12"/>
-    <line x1="12" y1="16" x2="12.01" y2="16"/>
-  </svg>
-);
-
-// ─── Helper: format raw digits into NRIC pattern YYMMDD-PB-XXXX ──────────────
-
-function formatNric(raw: string): string {
-  const digits = raw.replace(/[^0-9]/g, '').slice(0, 12);
-  let out = digits;
-  if (digits.length > 6) out = digits.slice(0, 6) + '-' + digits.slice(6);
-  if (digits.length > 8) out = out.slice(0, 9) + '-' + digits.slice(8);
-  return out;
-}
-
-function isValidNricLength(value: string): boolean {
-  return value.replace(/-/g, '').length === 12;
-}
-
-// ─── Main page ────────────────────────────────────────────────────────────────
-
-export default function LoginPage() {
-  const router = useRouter();
-
-  const [nric, setNric]         = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe]     = useState(false);
-  const [error, setError]       = useState<string | null>(null);
-  const [loading, setLoading]   = useState(false);
-
-  const handleNricChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setNric(formatNric(e.target.value));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-
-    if (!isValidNricLength(nric)) {
-      setError('Sila masukkan No. Kad Pengenalan yang sah (12 digit).');
-      return;
-    }
-    if (!password) {
-      setError('Sila masukkan kata laluan anda.');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      // Replace with your real auth call, e.g.:
-      // const res = await fetch('/api/auth/login', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ nric: nric.replace(/-/g, ''), password }),
-      // });
-      // const data = await res.json();
-      // if (!res.ok) throw new Error(data.message);
-      // router.push('/dashboard');
-
-      await new Promise(resolve => setTimeout(resolve, 600));
-      // Demo placeholder — remove once real API is connected
-      router.push('/dashboard');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Log masuk gagal. Sila cuba lagi.');
-    } finally {
-      setLoading(false);
-    }
-  };
+export default function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ message: string; error: string }>
+}) {
+  const params = use(searchParams)
+  const [showPassword, setShowPassword] = useState(false)
 
   return (
-    <div style={{ minHeight: '100vh', background: C.bg, color: C.text, fontFamily: 'system-ui, sans-serif', display: 'flex', flexDirection: 'column' }}>
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      background: 'var(--navy)',
+      fontFamily: "'Inter', 'Outfit', sans-serif",
+    }}>
 
-      {/* ── No main site navbar on this page — just a small return link ── */}
-      <div style={css.topBar}>
-        <button style={css.backLink} onClick={() => router.push('/')}>
-          <IcoArrowLeft />
-          Kembali ke Laman Utama
-        </button>
-      </div>
+      {/* ─── LEFT PANEL — Branding ─── */}
+      <div style={{
+        flex: '0 0 45%',
+        position: 'relative',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '48px 40px',
+        overflow: 'hidden',
+        background: 'linear-gradient(145deg, #0d1b2e 0%, #162035 50%, #1a2a45 100%)',
+        borderRight: '1px solid rgba(245,166,35,0.12)',
+      }} className="login-left-panel">
 
-      {/* ── Two-column split ── */}
-      <div style={css.split}>
+        <div style={{
+          position: 'absolute', top: '8%', left: '10%',
+          width: 260, height: 260, borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(245,166,35,0.12) 0%, transparent 70%)',
+          pointerEvents: 'none',
+        }} />
+        <div style={{
+          position: 'absolute', bottom: '10%', right: '5%',
+          width: 200, height: 200, borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(100,149,237,0.1) 0%, transparent 70%)',
+          pointerEvents: 'none',
+        }} />
 
-        {/* Left: video-background brand panel */}
-        <div style={css.videoPanel}>
-          {/* Replace this <video> with your actual asset.
-              poster = fallback frame shown before video loads / if it fails. */}
-          <video
-            style={css.videoEl}
-            autoPlay
-            muted
-            loop
-            playsInline
-            poster="/assets/video/login-bg-poster.jpg"
-          >
-            <source src="/assets/video/login-bg.mp4" type="video/mp4" />
-          </video>
+        {[...Array(8)].map((_, i) => (
+          <div key={i} style={{
+            position: 'absolute',
+            width: i % 3 === 0 ? 6 : 4,
+            height: i % 3 === 0 ? 6 : 4,
+            borderRadius: '50%',
+            background: `rgba(245,166,35,${0.15 + (i * 0.05)})`,
+            top: `${10 + (i * 10)}%`,
+            left: `${5 + (i * 8) % 80}%`,
+            pointerEvents: 'none',
+            animation: `floatDot ${3 + i}s ease-in-out infinite alternate`,
+          }} />
+        ))}
 
-          {/* Darkening overlay so text stays legible over any footage */}
-          <div style={css.videoOverlay} />
-
-          <div style={css.videoContent}>
-            <div style={css.videoLogo}>
-              {/* Swap for your local asset, e.g. /public/images/logo-yayasan-perak.png */}
-              <img
-                src="https://yayasanperak.gov.my/v7/wp-content/uploads/2021/06/cropped-Logo-Yayasan-Perak-512x512-1.png"
-                alt="Logo Yayasan Perak"
-                style={css.videoLogoImg}
-              />
-            </div>
-            <div style={css.videoTitle}>Iltizam Pendidikan,<br />Transformasi Insan</div>
-            <div style={css.videoSub}>
-              Akses permohonan bantuan, semak status, dan urus dokumen anda dalam satu platform selamat.
-            </div>
-            <div style={{ display: 'flex', gap: 6 }}>
-              {[true, false, false, false].map((on, i) => (
-                <div key={i} style={{
-                  width: on ? 20 : 6, height: 6, borderRadius: 3,
-                  background: on ? C.goldText : 'rgba(255,255,255,0.35)',
-                  transition: 'width .2s',
-                }} />
-              ))}
-            </div>
-          </div>
+        <div style={{
+          width: 100, height: 100, borderRadius: '50%',
+          background: 'white',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: 12, marginBottom: 28,
+          boxShadow: '0 0 0 8px rgba(245,166,35,0.12), 0 16px 48px rgba(0,0,0,0.5)',
+          flexShrink: 0, position: 'relative', zIndex: 1,
+        }}>
+          <img
+            src="/yp-logo.png"
+            alt="Yayasan Perak Logo"
+            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+          />
         </div>
 
-        {/* Right: form panel */}
-        <div style={css.formPanel}>
-          <form style={{ width: '100%', maxWidth: 380 }} onSubmit={handleSubmit}>
-            <h1 style={{ fontSize: 26, fontWeight: 600, color: C.text, marginBottom: 6 }}>
+        <div style={{ textAlign: 'center', position: 'relative', zIndex: 1, maxWidth: 320 }}>
+          <h1 style={{
+            fontSize: '2.2rem', fontWeight: 800, letterSpacing: '-0.02em',
+            color: 'white', margin: '0 0 8px', lineHeight: 1.1,
+          }}>
+            e<span style={{ color: 'var(--gold)' }}>-YP</span>
+          </h1>
+          <p style={{
+            fontSize: '0.85rem', fontWeight: 500, letterSpacing: '0.18em',
+            color: 'rgba(245,166,35,0.7)', textTransform: 'uppercase', marginBottom: 32,
+          }}>
+            Yayasan Perak
+          </p>
+          <div style={{
+            width: 48, height: 2,
+            background: 'linear-gradient(90deg, transparent, var(--gold), transparent)',
+            margin: '0 auto 28px',
+          }} />
+          <h2 style={{
+            fontSize: '1.45rem', fontWeight: 700, color: 'white',
+            margin: '0 0 12px', lineHeight: 1.3,
+          }}>
+            Portal Digital Rasmi
+          </h2>
+          <p style={{
+            fontSize: '0.9rem', color: 'rgba(255,255,255,0.5)',
+            lineHeight: 1.7, margin: 0,
+          }}>
+            Akses program bantuan, pantau permohonan anda, dan urus maklumat peribadi dengan selamat.
+          </p>
+        </div>
+
+        <div style={{
+          position: 'absolute', bottom: 32, left: '50%', transform: 'translateX(-50%)',
+          display: 'flex', alignItems: 'center', gap: 8,
+          background: 'rgba(255,255,255,0.04)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          borderRadius: 24, padding: '8px 16px', zIndex: 1,
+        }}>
+          <ShieldCheck size={14} style={{ color: 'var(--gold)' }} />
+          <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.45)', letterSpacing: '0.05em' }}>
+            Sistem Selamat & Disulitkan
+          </span>
+        </div>
+      </div>
+
+      {/* ─── RIGHT PANEL — Form ─── */}
+      <div style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        overflowY: 'auto',
+      }}>
+        <div style={{
+          padding: '20px 40px',
+          borderBottom: '1px solid rgba(255,255,255,0.05)',
+          display: 'flex',
+          alignItems: 'center',
+        }}>
+          <Link
+            href="/"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              color: 'rgba(255,255,255,0.5)',
+              fontSize: '0.875rem', fontWeight: 500,
+              textDecoration: 'none',
+              padding: '7px 14px',
+              borderRadius: 8,
+              border: '1px solid rgba(255,255,255,0.08)',
+              background: 'rgba(255,255,255,0.03)',
+              transition: 'all 0.2s ease',
+            }}
+            onMouseEnter={e => {
+              (e.currentTarget as HTMLElement).style.color = 'white';
+              (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.2)';
+              (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.07)';
+            }}
+            onMouseLeave={e => {
+              (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.5)';
+              (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.08)';
+              (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.03)';
+            }}
+          >
+            <ArrowLeft size={15} />
+            Kembali ke Utama
+          </Link>
+        </div>
+
+        <div style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          padding: '40px 64px',
+          maxWidth: 480,
+          width: '100%',
+          margin: '0 auto',
+          alignSelf: 'center',
+        }} className="login-form-area">
+          <div style={{ marginBottom: 40 }}>
+            <h2 style={{
+              fontSize: '1.85rem', fontWeight: 800,
+              color: 'white', margin: '0 0 8px',
+              letterSpacing: '-0.02em',
+            }}>
               Log Masuk Akaun
-            </h1>
-            <p style={{ fontSize: 13.5, color: C.muted, marginBottom: 32 }}>
-              Sila masukkan No. Kad Pengenalan (NRIC) anda
-            </p>
+            </h2>
+          
+          </div>
+
+          {/*
+            FIX: action is bound directly on the <form>, not via `formAction`
+            on the submit button. When only the button carries `formAction`
+            and the <form> itself has no `action`, some React 19 / Next.js
+            App Router setups can dispatch the server action with an empty
+            or stale FormData snapshot — which is exactly the `login({})`
+            seen in the dev server logs, even though the fields were visibly
+            filled in. Binding action={login} on the form guarantees the
+            browser's native submit event collects every named input first.
+          */}
+          <form action={login} style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
 
             {/* NRIC field */}
-            <div style={{ marginBottom: 18 }}>
-              <label style={css.fieldLabel} htmlFor="nric">No. Kad Pengenalan (NRIC)</label>
+            <div>
+              <label htmlFor="nric" style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                fontSize: '0.78rem', fontWeight: 700,
+                color: 'rgba(255,255,255,0.55)', marginBottom: 8,
+                letterSpacing: '0.08em', textTransform: 'uppercase'
+              }}>
+                <CreditCard size={13} />
+                No. Kad Pengenalan (NRIC)
+              </label>
               <input
                 id="nric"
-                style={css.input}
+                name="nric"
                 type="text"
                 inputMode="numeric"
-                placeholder="990412-05-1234"
-                maxLength={14}
-                value={nric}
-                onChange={handleNricChange}
                 autoComplete="off"
+                required
+                maxLength={14}
+                placeholder="000000-00-0000"
+                style={{
+                  width: '100%', padding: '13px 16px',
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: 10, color: 'white',
+                  fontSize: '1rem', outline: 'none',
+                  boxSizing: 'border-box',
+                  letterSpacing: '0.06em',
+                  transition: 'border-color 0.2s, box-shadow 0.2s',
+                }}
+                onFocus={e => {
+                  e.currentTarget.style.borderColor = 'rgba(245,166,35,0.55)';
+                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(245,166,35,0.08)';
+                }}
+                onBlur={e => {
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+                onChange={e => {
+                  const raw = e.currentTarget.value.replace(/\D/g, '').slice(0, 12)
+                  let formatted = raw
+                  if (raw.length > 6) formatted = raw.slice(0, 6) + '-' + raw.slice(6)
+                  if (raw.length > 8) formatted = raw.slice(0, 6) + '-' + raw.slice(6, 8) + '-' + raw.slice(8)
+                  e.currentTarget.value = formatted
+                }}
               />
-              <div style={{ fontSize: 11, color: C.muted2, marginTop: 6 }}>
-                Format: YYMMDD-PB-XXXX (tanpa sengkang juga diterima)
-              </div>
+              <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.28)', marginTop: 6 }}>
+                Contoh: 900101-14-5678
+              </p>
             </div>
 
             {/* Password field */}
-            <div style={{ marginBottom: 18 }}>
-              <label style={css.fieldLabel} htmlFor="password">Kata Laluan</label>
+            <div>
+              <label htmlFor="password" style={{
+                display: 'block', fontSize: '0.78rem', fontWeight: 700,
+                color: 'rgba(255,255,255,0.55)', marginBottom: 8,
+                letterSpacing: '0.08em', textTransform: 'uppercase',
+              }}>
+                Kata Laluan
+              </label>
               <div style={{ position: 'relative' }}>
                 <input
                   id="password"
-                  style={{ ...css.input, paddingRight: 44 }}
+                  name="password"
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="Masukkan kata laluan"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
                   autoComplete="current-password"
+                  required
+                  style={{
+                    width: '100%', padding: '13px 48px 13px 16px',
+                    background: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: 10, color: 'white',
+                    fontSize: '0.95rem', outline: 'none',
+                    boxSizing: 'border-box',
+                    transition: 'border-color 0.2s, box-shadow 0.2s',
+                  }}
+                  onFocus={e => {
+                    e.currentTarget.style.borderColor = 'rgba(245,166,35,0.55)';
+                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(245,166,35,0.08)';
+                  }}
+                  onBlur={e => {
+                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
                 />
-                <span
-                  style={css.eyeBtn}
-                  onClick={() => setShowPassword(v => !v)}
-                  role="button"
-                  aria-label={showPassword ? 'Sembunyikan kata laluan' : 'Tunjukkan kata laluan'}
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? 'Sembunyi kata laluan' : 'Tunjuk kata laluan'}
+                  style={{
+                    position: 'absolute', right: 14, top: '50%',
+                    transform: 'translateY(-50%)', background: 'transparent',
+                    border: 'none', cursor: 'pointer',
+                    color: 'rgba(255,255,255,0.35)', padding: 4,
+                    transition: 'color 0.2s',
+                  }}
+                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.7)'}
+                  onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.35)'}
                 >
-                  {showPassword ? <IcoEyeOff /> : <IcoEye />}
-                </span>
+                  {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                </button>
               </div>
             </div>
 
-            {/* Remember + forgot */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 22 }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12.5, color: C.muted, cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  style={{ accentColor: C.gold }}
-                />
-                Ingat saya
-              </label>
-              <button
-                type="button"
-                style={{ background: 'none', border: 'none', fontSize: 12.5, color: C.goldText, cursor: 'pointer', padding: 0 }}
-                onClick={() => router.push('/forgot-password')}
-              >
-                Lupa kata laluan?
-              </button>
-            </div>
-
-            {/* Submit */}
-            <button type="submit" style={css.submitBtn} disabled={loading}>
-              {loading ? 'Sedang log masuk...' : 'Log Masuk'}
-            </button>
-
-            {/* Error message */}
-            {error && (
-              <div style={css.errorBox}>
-                <span style={{ color: C.red, flexShrink: 0, display: 'flex' }}><IcoAlert /></span>
-                <span style={{ color: C.redText, fontSize: 13 }}>{error}</span>
+            {/* Error banner */}
+            {params?.error && (
+              <div style={{
+                padding: '12px 16px', borderRadius: 9,
+                background: 'rgba(239,68,68,0.08)',
+                border: '1px solid rgba(239,68,68,0.22)',
+                color: '#f87171', fontSize: '0.875rem',
+                display: 'flex', alignItems: 'center', gap: 8,
+              }}>
+                <span style={{ flexShrink: 0 }}>⚠</span>
+                {params.error}
               </div>
             )}
 
-            {/* Sign up link */}
-            <div style={{ textAlign: 'center', marginTop: 24, fontSize: 13, color: C.muted }}>
-              Belum mempunyai akaun?{' '}
-              <button
-                type="button"
-                style={{ background: 'none', border: 'none', color: C.goldText, cursor: 'pointer', padding: 0, fontSize: 13 }}
-                onClick={() => router.push('/register')}
-              >
-                Daftar Sekarang
-              </button>
-            </div>
+            {/* Success banner */}
+            {params?.message && (
+              <div style={{
+                padding: '12px 16px', borderRadius: 9,
+                background: 'rgba(34,197,94,0.08)',
+                border: '1px solid rgba(34,197,94,0.22)',
+                color: '#4ade80', fontSize: '0.875rem',
+              }}>
+                {params.message}
+              </div>
+            )}
+
+            {/* Submit — plain type="submit", no formAction. The form's own
+                action={login} above is what fires now. */}
+            <button
+              type="submit"
+              style={{
+                width: '100%', padding: '14px',
+                background: 'linear-gradient(135deg, var(--gold) 0%, #e6920a 100%)',
+                border: 'none', borderRadius: 10, cursor: 'pointer',
+                color: 'var(--navy)', fontSize: '1rem', fontWeight: 800,
+                letterSpacing: '0.02em',
+                boxShadow: '0 4px 20px rgba(245,166,35,0.35)',
+                transition: 'all 0.2s ease',
+                marginTop: 4,
+              }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLElement).style.transform = 'translateY(-1px)';
+                (e.currentTarget as HTMLElement).style.boxShadow = '0 8px 28px rgba(245,166,35,0.45)';
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLElement).style.transform = '';
+                (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 20px rgba(245,166,35,0.35)';
+              }}
+            >
+              Log Masuk
+            </button>
           </form>
+
+          <p style={{
+            textAlign: 'center', marginTop: 28,
+            fontSize: '0.8rem', color: 'rgba(255,255,255,0.25)',
+            lineHeight: 1.6,
+          }}>
+            Masalah log masuk? Hubungi urus setia{' '}
+            <Link href="/contact" style={{ color: 'rgba(245,166,35,0.7)', textDecoration: 'none' }}>
+              di sini
+            </Link>
+            .
+          </p>
         </div>
-
       </div>
+
+      <style>
+        {`@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        @keyframes floatDot {
+            from { transform: translateY(0px) scale(1); opacity: 0.4; }
+            to   { transform: translateY(-14px) scale(1.3); opacity: 0.9; }
+        }
+
+        input:-webkit-autofill {
+          -webkit-box-shadow: 0 0 0 100px #162035 inset !important;
+          -webkit-text-fill-color: white !important;
+        }
+
+        @media (max-width: 768px) {
+          .login-left-panel { display: none !important; }
+          .login-form-area  { padding: 24px 28px !important; }
+        }`}
+      </style>
     </div>
-  );
+  )
 }
-
-// ─── Styles ───────────────────────────────────────────────────────────────────
-
-const css: Record<string, React.CSSProperties> = {
-  topBar: {
-    background: C.nav, borderBottom: `1px solid ${C.border}`,
-    height: 56, display: 'flex', alignItems: 'center', padding: '0 20px',
-  },
-  backLink: {
-    display: 'flex', alignItems: 'center', gap: 8,
-    background: 'rgba(255,255,255,0.04)', border: `1px solid ${C.border}`,
-    borderRadius: 8, padding: '7px 14px',
-    color: C.muted, fontSize: 14, cursor: 'pointer',
-  },
-  split: {
-    flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', minHeight: 580,
-  },
-  videoPanel: {
-    position: 'relative', overflow: 'hidden', background: '#05080c',
-  },
-  videoEl: {
-    position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover',
-  },
-  videoOverlay: {
-    position: 'absolute', inset: 0,
-    background: 'linear-gradient(180deg, rgba(10,15,20,0.25) 0%, rgba(8,12,16,0.55) 65%, rgba(6,10,14,0.78) 100%)',
-  },
-  videoContent: {
-    position: 'absolute', inset: 0,
-    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-    padding: 48, textAlign: 'center',
-  },
-  videoLogo: {
-    width: 84, height: 84, borderRadius: '50%', background: '#fff',
-    display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 28,
-    overflow: 'hidden', boxShadow: '0 0 0 1px rgba(255,255,255,0.08)',
-  },
-  videoLogoImg: {
-    width: '100%', height: '100%', objectFit: 'cover',
-  },
-  videoTitle: {
-    fontSize: 24, fontWeight: 600, color: '#fff', marginBottom: 10, lineHeight: 1.3,
-  },
-  videoSub: {
-    fontSize: 13.5, color: 'rgba(255,255,255,0.7)', lineHeight: 1.6,
-    maxWidth: 320, marginBottom: 32,
-  },
-  formPanel: {
-    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 48,
-  },
-  fieldLabel: {
-    fontSize: 13, color: C.muted, marginBottom: 7, display: 'block', fontWeight: 500,
-  },
-  input: {
-    width: '100%', background: C.input, border: `1px solid ${C.border}`,
-    borderRadius: 10, padding: '13px 14px', fontSize: 15, color: C.text,
-    letterSpacing: '0.5px', outline: 'none',
-  },
-  eyeBtn: {
-    position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
-    color: C.muted, cursor: 'pointer', display: 'flex',
-  },
-  submitBtn: {
-    width: '100%', background: C.gold, color: '#1a1206', fontWeight: 600,
-    fontSize: 15, border: 'none', borderRadius: 10, padding: 14, cursor: 'pointer',
-  },
-  errorBox: {
-    background: C.redBg, border: '1px solid rgba(224,80,80,0.3)',
-    borderRadius: 10, padding: '12px 14px', marginTop: 16,
-    display: 'flex', alignItems: 'center', gap: 8,
-  },
-};

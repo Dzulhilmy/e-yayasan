@@ -16,13 +16,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   const menu = [
-    { label: 'Permohonan', path: '/admin/applications', icon: FileText },
     { label: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
-    { label: 'Programs', path: '/admin/programs', icon: BookOpen },
-    { label: 'Live Feed & News', path: '/admin/feed', icon: Newspaper },
+    { label: 'Permohonan', path: '/admin/applications', icon: FileText },
+    { label: 'Program Bantuan', path: '/admin/programs', icon: BookOpen },
+    { label: 'Berita Terkini', path: '/admin/feed', icon: Newspaper },
     { label: 'Info Terkini', path: '/admin/info', icon: Info },
-    { label: 'YP Quotes', path: '/admin/quotes', icon: Image },
-    { label: 'Users & Applicants', path: '/admin/users', icon: Users },
+    { label: 'Petikan YP', path: '/admin/quotes', icon: Image },
+    { label: 'Segnmen Pengguna', path: '/admin/users', icon: Users },
     { label: 'System Settings', path: '/admin/settings', icon: Settings },
   ];
 

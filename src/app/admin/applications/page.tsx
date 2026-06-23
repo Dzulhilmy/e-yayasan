@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from 'next/navigation';
-import { Eye, Download, CheckCircle, XCircle } from "lucide-react";
+import { Eye, Download, CheckCircle, XCircle, FileText } from "lucide-react";
 
 type AppRow = any;
 
@@ -15,12 +15,10 @@ export default function AdminApplicationsPage() {
 
   useEffect(() => {
     (async () => {
-      // ensure admin
       try {
         const r = await fetch('/api/auth/is-admin');
         const j = await r.json();
         if (!j.isAdmin) {
-          // redirect to admin login
           router.push('/admin/login');
           return;
         }
@@ -82,86 +80,274 @@ export default function AdminApplicationsPage() {
         return;
       }
       const json = await res.json();
-      // update local
       setApps((prev) => prev.map(p => p.id === appId ? json.data ?? p : p));
       setSelected((s) => s && s.id === appId ? (json.data ?? s) : s);
     } catch (e) { console.error(e); }
   }
 
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: '360px 1fr', gap: 20 }}>
-      <div>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-          <button className={`btn ${filter==='all' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setFilter('all')}>Semua</button>
-          <button className={`btn ${filter==='pending' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setFilter('pending')}>Menunggu</button>
-          <button className={`btn ${filter==='approved' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setFilter('approved')}>Diluluskan</button>
-          <button className={`btn ${filter==='rejected' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setFilter('rejected')}>Ditolak</button>
-        </div>
+  function statusLabel(status?: string) {
+    return status ?? 'Menunggu';
+  }
 
-        <div style={{ background: 'var(--navy-card)', padding: 12, borderRadius: 12, border: '1px solid var(--border)', maxHeight: '70vh', overflow: 'auto' }}>
-          {loading && <div style={{ color: 'var(--text-muted)' }}>Memuatkan...</div>}
-          {!loading && filtered().length === 0 && <div style={{ color: 'var(--text-muted)' }}>Tiada permohonan.</div>}
-          {filtered().map((a) => (
-            <div key={a.id} onClick={() => { setSelected(a); loadDocsFor(a); }} style={{ padding: 12, borderRadius: 10, marginBottom: 8, cursor: 'pointer', background: selected?.id === a.id ? 'rgba(245,166,35,0.06)' : 'transparent', border: `1px solid ${selected?.id === a.id ? 'rgba(245,166,35,0.12)' : 'transparent'}` }}>
-              <div style={{ fontWeight: 700 }}>{a.ref ?? a.reference_number ?? '—'}</div>
-              <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>{a.program}</div>
-              <div style={{ marginTop: 6 }}><span className={`badge ${a.status && (a.status.toLowerCase().includes('lulus') || a.status.toLowerCase().includes('approved')) ? 'badge-green' : a.status && (a.status.toLowerCase().includes('tolak') || a.status.toLowerCase().includes('rejected')) ? 'badge-red' : 'badge-blue'}`}>{a.status ?? 'Menunggu'}</span></div>
-            </div>
-          ))}
-        </div>
+  function statusVariant(status?: string): 'approved' | 'rejected' | 'pending' {
+    const s = (status || '').toLowerCase();
+    if (s.includes('lulus') || s.includes('approved')) return 'approved';
+    if (s.includes('tolak') || s.includes('rejected')) return 'rejected';
+    return 'pending';
+  }
+
+  const statusStyles: Record<string, { bg: string; color: string }> = {
+    approved: { bg: 'rgba(34,197,94,0.12)', color: '#4ade80' },
+    rejected: { bg: 'rgba(239,68,68,0.12)', color: '#f87171' },
+    pending:  { bg: 'rgba(245,166,35,0.12)', color: '#f5a623' },
+  };
+
+  const filterTabs: { key: typeof filter; label: string }[] = [
+    { key: 'all',      label: 'Semua' },
+    { key: 'pending',  label: 'Menunggu' },
+    { key: 'approved', label: 'Diluluskan' },
+    { key: 'rejected', label: 'Ditolak' },
+  ];
+
+  const list = filtered();
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+      {/* ── Filter tabs ── */}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        {filterTabs.map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setFilter(tab.key)}
+            style={{
+              padding: '8px 16px',
+              borderRadius: 8,
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
+              border: filter === tab.key ? 'none' : '1px solid var(--border)',
+              background: filter === tab.key ? 'var(--gold)' : 'transparent',
+              color: filter === tab.key ? 'var(--navy)' : 'var(--text-muted)',
+            }}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
-      <div>
-        {!selected && (
-          <div className="card">Pilih permohonan untuk melihat butiran.</div>
-        )}
+      {/* ── Split layout: list (left) + detail (right) ── */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '340px minmax(0, 1fr)',
+        gap: 20,
+        alignItems: 'start',
+      }}>
 
-        {selected && (
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <h2 style={{ margin: 0 }}>{selected.ref ?? selected.reference_number}</h2>
-              <div>
-                <button className="btn btn-ghost" onClick={() => updateStatus(selected.id, 'disemak')}><CheckCircle size={14} /> Semak</button>
-                <button className="btn btn-danger" style={{ marginLeft: 8 }} onClick={() => updateStatus(selected.id, 'ditolak')}><XCircle size={14} /> Tolak</button>
-                <button className="btn btn-success" style={{ marginLeft: 8 }} onClick={() => updateStatus(selected.id, 'diluluskan')}><CheckCircle size={14} /> Lulus</button>
+        {/* LEFT — application list, scoped to its own card */}
+        <div style={{
+          background: 'var(--navy-card)',
+          border: '1px solid var(--border)',
+          borderRadius: 12,
+          padding: 10,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 8,
+          maxHeight: '72vh',
+          overflowY: 'auto',
+        }}>
+          {loading && (
+            <div style={{ color: 'var(--text-muted)', padding: 12, fontSize: 13 }}>
+              Memuatkan...
+            </div>
+          )}
+
+          {!loading && list.length === 0 && (
+            <div style={{ color: 'var(--text-muted)', padding: 12, fontSize: 13 }}>
+              Tiada permohonan.
+            </div>
+          )}
+
+          {!loading && list.map((a) => {
+            const variant = statusVariant(a.status);
+            const isSelected = selected?.id === a.id;
+            return (
+              <div
+                key={a.id}
+                onClick={() => { setSelected(a); loadDocsFor(a); }}
+                style={{
+                  padding: 12,
+                  borderRadius: 10,
+                  cursor: 'pointer',
+                  background: isSelected ? 'rgba(245,166,35,0.08)' : 'transparent',
+                  border: `1px solid ${isSelected ? 'rgba(245,166,35,0.35)' : 'transparent'}`,
+                  transition: 'background 0.15s, border-color 0.15s',
+                }}
+              >
+                <div style={{ fontWeight: 700, fontSize: 14, color: 'white' }}>
+                  {a.ref ?? a.reference_number ?? '—'}
+                </div>
+                <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 3 }}>
+                  {a.program}
+                </div>
+                <span style={{
+                  display: 'inline-block',
+                  marginTop: 7,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  padding: '3px 9px',
+                  borderRadius: 8,
+                  background: statusStyles[variant].bg,
+                  color: statusStyles[variant].color,
+                }}>
+                  {statusLabel(a.status)}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* RIGHT — detail panel, fixed-position empty state (not an overlay) */}
+        <div>
+          {!selected && (
+            <div style={{
+              background: 'var(--navy-card)',
+              border: '1px solid var(--border)',
+              borderRadius: 12,
+              padding: 48,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 12,
+              minHeight: 280,
+              textAlign: 'center',
+            }}>
+              <FileText size={32} style={{ color: 'var(--text-muted)', opacity: 0.5 }} />
+              <div style={{ color: 'var(--text-muted)', fontSize: 14 }}>
+                Pilih permohonan di sebelah kiri untuk melihat butiran.
               </div>
             </div>
+          )}
 
-            <div style={{ marginBottom: 12 }}>
-              {/* status card */}
-              <div style={{ padding: 12, borderRadius: 10, border: '1px solid var(--border)', background: selected.status && (selected.status.toLowerCase().includes('lulus') || selected.status.toLowerCase().includes('approved')) ? 'rgba(16,185,129,0.06)' : selected.status && (selected.status.toLowerCase().includes('tolak') || selected.status.toLowerCase().includes('rejected')) ? 'rgba(255,59,48,0.06)' : 'var(--navy-mid)' }}>
-                <div style={{ fontWeight: 700 }}>{selected.status ?? 'Menunggu'}</div>
-                <div style={{ color: 'var(--text-muted)', marginTop: 6 }}>{selected.created_at ? new Date(selected.created_at).toLocaleString() : ''}</div>
-              </div>
-            </div>
+          {selected && (
+            <div style={{
+              background: 'var(--navy-card)',
+              border: '1px solid var(--border)',
+              borderRadius: 12,
+              padding: 20,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 16,
+            }}>
 
-            <div className="card" style={{ padding: 16, marginBottom: 12 }}>
-              <h3>Butiran Pemohon</h3>
-              <div style={{ color: 'var(--text-muted)', marginTop: 8 }}>
-                <pre style={{ whiteSpace: 'pre-wrap', fontSize: '0.9rem' }}>{JSON.stringify(selected.data ?? selected, null, 2)}</pre>
-              </div>
-            </div>
-
-            <div className="card" style={{ padding: 16 }}>
-              <h3>Dokumen Dilampirkan</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
-                {docs.length === 0 && <div style={{ color: 'var(--text-muted)' }}>Tiada dokumen ditemui untuk pemohon ini.</div>}
-                {docs.map((d) => (
-                  <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 8, borderRadius: 8, border: '1px solid var(--border)' }}>
-                    <div>
-                      <div style={{ fontWeight: 700 }}>{d.name}</div>
-                      <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>{d.type} · {d.uploaded_at}</div>
-                    </div>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <button className="btn btn-ghost btn-sm" onClick={() => openSigned(d.file_url)}><Eye size={14} /> Lihat</button>
-                      <button className="btn btn-ghost btn-sm" onClick={() => openSigned(d.file_url)}><Download size={14} /> Muat Turun</button>
-                    </div>
+              {/* Header + actions */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: 18, color: 'white' }}>
+                    {selected.ref ?? selected.reference_number}
+                  </h2>
+                  <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>
+                    {selected.program}
                   </div>
-                ))}
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    onClick={() => updateStatus(selected.id, 'disemak')}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, padding: '7px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer' }}
+                  >
+                    <CheckCircle size={14} /> Semak
+                  </button>
+                  <button
+                    onClick={() => updateStatus(selected.id, 'ditolak')}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, padding: '7px 12px', borderRadius: 8, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', color: '#f87171', cursor: 'pointer' }}
+                  >
+                    <XCircle size={14} /> Tolak
+                  </button>
+                  <button
+                    onClick={() => updateStatus(selected.id, 'diluluskan')}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, padding: '7px 12px', borderRadius: 8, border: '1px solid rgba(34,197,94,0.3)', background: 'rgba(34,197,94,0.08)', color: '#4ade80', cursor: 'pointer' }}
+                  >
+                    <CheckCircle size={14} /> Lulus
+                  </button>
+                </div>
               </div>
+
+              {/* Status banner */}
+              <div style={{
+                padding: '12px 16px',
+                borderRadius: 10,
+                background: statusStyles[statusVariant(selected.status)].bg,
+              }}>
+                <div style={{ fontWeight: 700, fontSize: 14, color: statusStyles[statusVariant(selected.status)].color }}>
+                  {statusLabel(selected.status)}
+                </div>
+                <div style={{ color: statusStyles[statusVariant(selected.status)].color, opacity: 0.75, marginTop: 4, fontSize: 12.5 }}>
+                  {selected.created_at ? new Date(selected.created_at).toLocaleString() : ''}
+                </div>
+              </div>
+
+              {/* Applicant details */}
+              <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16 }}>
+                <h3 style={{ margin: '0 0 10px', fontSize: 14, color: 'white' }}>Butiran pemohon</h3>
+                <pre style={{
+                  whiteSpace: 'pre-wrap',
+                  fontSize: 12.5,
+                  color: 'var(--text-muted)',
+                  margin: 0,
+                  background: 'rgba(255,255,255,0.03)',
+                  borderRadius: 8,
+                  padding: 12,
+                  maxHeight: 220,
+                  overflowY: 'auto',
+                }}>
+                  {JSON.stringify(selected.data ?? selected, null, 2)}
+                </pre>
+              </div>
+
+              {/* Documents */}
+              <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16 }}>
+                <h3 style={{ margin: '0 0 10px', fontSize: 14, color: 'white' }}>Dokumen dilampirkan</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {docs.length === 0 && (
+                    <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>
+                      Tiada dokumen ditemui untuk pemohon ini.
+                    </div>
+                  )}
+                  {docs.map((d) => (
+                    <div key={d.id} style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border)',
+                    }}>
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: 13, color: 'white' }}>{d.name}</div>
+                        <div style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 2 }}>
+                          {d.type} · {d.uploaded_at}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button
+                          onClick={() => openSigned(d.file_url)}
+                          style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, padding: '5px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer' }}
+                        >
+                          <Eye size={13} /> Lihat
+                        </button>
+                        <button
+                          onClick={() => openSigned(d.file_url)}
+                          style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, padding: '5px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer' }}
+                        >
+                          <Download size={13} /> Muat turun
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
             </div>
-          </div>
-        )}
+          )}
+        </div>
+
       </div>
     </div>
   );
