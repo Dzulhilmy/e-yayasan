@@ -19,12 +19,12 @@ export default function AdminApplicationsPage() {
         const r = await fetch('/api/auth/is-admin');
         const j = await r.json();
         if (!j.isAdmin) {
-          router.push('/admin/login');
+          router.push('/login');
           return;
         }
       } catch (e) {
         console.error(e);
-        router.push('/admin/login');
+        router.push('/login');
         return;
       }
       loadApps();
@@ -81,7 +81,7 @@ export default function AdminApplicationsPage() {
       }
       const json = await res.json();
       setApps((prev) => prev.map(p => p.id === appId ? json.data ?? p : p));
-      setSelected((s) => s && s.id === appId ? (json.data ?? s) : s);
+      setSelected((s: any) => s && s.id === appId ? (json.data ?? s) : s);
     } catch (e) { console.error(e); }
   }
 

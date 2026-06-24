@@ -1,6 +1,7 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
+import { createClient } from "@/utils/supabase/client";
 import {
   CheckCircle,
   Clock,
@@ -15,54 +16,6 @@ import {
   Eye,
   BarChart3,
 } from "lucide-react";
-
-const applications = [
-  {
-    id: "YP-2026-001234",
-    program: "Insentif Siswa (INSISYP)",
-    type: "Pendidikan",
-    date: "15 Mac 2026",
-    status: "approved",
-    statusLabel: "Diluluskan",
-    steps: [
-      { label: "Permohonan Diterima", done: true, date: "15 Mac" },
-      { label: "Semakan Dokumen", done: true, date: "18 Mac" },
-      { label: "Penilaian Kelayakan", done: true, date: "22 Mac" },
-      { label: "Keputusan", done: true, date: "28 Mac" },
-    ],
-    amount: "RM 3,000",
-  },
-  {
-    id: "YP-2026-001891",
-    program: "Bantuan Sara Diri Mahasiswa",
-    type: "Kecemasan",
-    date: "3 Mei 2026",
-    status: "processing",
-    statusLabel: "Dalam Proses",
-    steps: [
-      { label: "Permohonan Diterima", done: true, date: "3 Mei" },
-      { label: "Semakan Dokumen", done: true, date: "5 Mei" },
-      { label: "Penilaian Kelayakan", done: false, date: "—" },
-      { label: "Keputusan", done: false, date: "—" },
-    ],
-    amount: "RM 500",
-  },
-  {
-    id: "YP-2025-008831",
-    program: "TASPENDIK",
-    type: "Pendidikan",
-    date: "10 Jan 2025",
-    status: "approved",
-    statusLabel: "Aktif",
-    steps: [
-      { label: "Permohonan Diterima", done: true, date: "10 Jan" },
-      { label: "Semakan Dokumen", done: true, date: "12 Jan" },
-      { label: "Penilaian Kelayakan", done: true, date: "15 Jan" },
-      { label: "Keputusan", done: true, date: "20 Jan" },
-    ],
-    amount: "RM 1,200/tahun",
-  },
-];
 
 const notifications = [
   {
@@ -119,7 +72,6 @@ const getStatusLabel = (status: string) => {
 };
 
 const getSteps = (app: any) => {
-  // If explicit steps provided by API, prefer them (assumed normalized)
   if (Array.isArray(app.steps) && app.steps.length) return app.steps;
 
   const fmt = (d?: string | null) =>
@@ -136,7 +88,6 @@ const getSteps = (app: any) => {
   const updated = app.updated_at ? fmt(app.updated_at) : null;
   const status = (app.status || "").toLowerCase();
 
-  // Define four chronology steps in Bahasa Malaysia
   const steps = [
     { label: "Dihantar", done: true, date: created },
     {
@@ -164,18 +115,56 @@ const getSteps = (app: any) => {
   return steps;
 };
 
-const getProgramType = (app: any) => {
-  if (app.type) return app.type;
-  return "Yayasan Perak";
-};
+// Parses "RM 3,000" / "RM 1,200/tahun" style strings into a plain number
+function parseAmount(raw?: string | null): number {
+  if (!raw) return 0;
+  const cleaned = String(raw).replace(/[^\d.]/g, "");
+  const n = parseFloat(cleaned);
+  return isNaN(n) ? 0 : n;
+}
+
+function isApprovedStatus(status: string) {
+  const s = (status || "").toLowerCase();
+  return s === "approved" || s.includes("lulus");
+}
+
+function isProcessingStatus(status: string) {
+  const s = (status || "").toLowerCase();
+  return s === "processing" || s === "submitted" || s.includes("proses") || s.includes("semak");
+}
 
 export default function DashboardPage() {
   const [applicationsList, setApplicationsList] = useState<any[]>([]);
   const [selected, setSelected] = useState<any | null>(null);
   const [profile, setProfile] = useState<{ full_name?: string } | null>(null);
   const [showMoreModal, setShowMoreModal] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const stepsList = selected ? getSteps(selected) : [];
+
+  // ── Live-derived stat cards — computed from whatever is actually in
+  // applicationsList, instead of hardcoded strings. Updates automatically
+  // whenever applicationsList changes (initial load OR realtime event).
+  const liveStats = useMemo(() => {
+    const active = applicationsList.length;
+    const approved = applicationsList.filter((a) => isApprovedStatus(a.status)).length;
+    const processing = applicationsList.filter((a) => isProcessingStatus(a.status)).length;
+    const totalAmount = applicationsList
+      .filter((a) => isApprovedStatus(a.status))
+      .reduce((sum, a) => sum + parseAmount(a.amount), 0);
+
+    return [
+      { label: "Permohonan Aktif", value: String(active), icon: FileText, color: "var(--gold)" },
+      { label: "Diluluskan", value: String(approved), icon: CheckCircle, color: "var(--green)" },
+      { label: "Dalam Proses", value: String(processing), icon: Clock, color: "var(--teal)" },
+      {
+        label: "Jumlah Bantuan",
+        value: totalAmount > 0 ? `RM ${totalAmount.toLocaleString("ms-MY")}` : "RM 0",
+        icon: TrendingUp,
+        color: "var(--purple)",
+      },
+    ];
+  }, [applicationsList]);
 
   useEffect(() => {
     let mounted = true;
@@ -194,9 +183,11 @@ export default function DashboardPage() {
       mounted = false;
     };
   }, []);
+
   useEffect(() => {
     let mounted = true;
     const loadApps = async () => {
+      setLoading(true);
       try {
         const r = await fetch("/api/applications/list", { cache: "no-store" });
         if (!r.ok) return;
@@ -205,9 +196,7 @@ export default function DashboardPage() {
         const list = p.data ?? [];
         setApplicationsList(list);
         setSelected(list[0] ?? null);
-        // show modal if more than 3
         if (list.length > 3) setShowMoreModal(true);
-        // if we have a recently submitted ref in sessionStorage, bring it to top
         try {
           const lastRef = window.sessionStorage.getItem("lastApplicationRef");
           if (lastRef) {
@@ -223,11 +212,61 @@ export default function DashboardPage() {
         } catch (e) {}
       } catch (err) {
         // ignore
+      } finally {
+        if (mounted) setLoading(false);
       }
     };
     loadApps();
     return () => {
       mounted = false;
+    };
+  }, []);
+
+  // ── Realtime subscription — keeps the dashboard live without a refresh.
+  // Whenever a row in `applications` belonging to this user changes
+  // (admin approves/rejects, a new one is submitted from another tab,
+  // etc), this patches applicationsList in place instead of requiring
+  // the user to reload the page.
+  useEffect(() => {
+    const supabase = createClient();
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      channel = supabase
+        .channel(`applications-user-${user.id}`)
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "applications", filter: `user_id=eq.${user.id}` },
+          (payload) => {
+            setApplicationsList((prev) => {
+              if (payload.eventType === "INSERT") {
+                return [payload.new as any, ...prev];
+              }
+              if (payload.eventType === "UPDATE") {
+                return prev.map((a) => (a.id === (payload.new as any).id ? { ...a, ...payload.new } : a));
+              }
+              if (payload.eventType === "DELETE") {
+                return prev.filter((a) => a.id !== (payload.old as any).id);
+              }
+              return prev;
+            });
+
+            // Keep the detail panel in sync if the currently-selected
+            // application is the one that just changed (e.g. admin just
+            // approved it while the user has it open).
+            if (payload.eventType === "UPDATE") {
+              setSelected((sel: any) => (sel && sel.id === (payload.new as any).id ? { ...sel, ...payload.new } : sel));
+            }
+          }
+        )
+        .subscribe();
+    })();
+
+    return () => {
+      if (channel) supabase.removeChannel(channel);
     };
   }, []);
 
@@ -266,32 +305,7 @@ export default function DashboardPage() {
             marginBottom: 40,
           }}
         >
-          {[
-            {
-              label: "Permohonan Aktif",
-              value: "3",
-              icon: FileText,
-              color: "var(--gold)",
-            },
-            {
-              label: "Diluluskan",
-              value: "2",
-              icon: CheckCircle,
-              color: "var(--green)",
-            },
-            {
-              label: "Dalam Proses",
-              value: "1",
-              icon: Clock,
-              color: "var(--teal)",
-            },
-            {
-              label: "Jumlah Bantuan",
-              value: "RM 4,200",
-              icon: TrendingUp,
-              color: "var(--purple)",
-            },
-          ].map((s) => (
+          {liveStats.map((s) => (
             <div
               key={s.label}
               className="card"
@@ -321,7 +335,7 @@ export default function DashboardPage() {
                     color: s.color,
                   }}
                 >
-                  {s.value}
+                  {loading ? "—" : s.value}
                 </div>
                 <div
                   style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}
@@ -430,7 +444,7 @@ export default function DashboardPage() {
               </button>
             ))}
 
-            {applicationsList.length === 0 && (
+            {!loading && applicationsList.length === 0 && (
               <div style={{ padding: 24, color: "var(--text-muted)" }}>
                 Tiada permohonan ditemui.
               </div>
@@ -593,7 +607,6 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                {/* Progress Tracker */}
                 <h3
                   style={{
                     fontSize: "0.88rem",
@@ -618,7 +631,6 @@ export default function DashboardPage() {
                         position: "relative",
                       }}
                     >
-                      {/* Connector */}
                       {i < stepsList.length - 1 && (
                         <div
                           style={{
@@ -633,7 +645,6 @@ export default function DashboardPage() {
                           }}
                         />
                       )}
-                      {/* Icon */}
                       <div
                         style={{
                           width: 32,
@@ -698,7 +709,6 @@ export default function DashboardPage() {
                     margin: "24px 0",
                   }}
                 />
-                {/* Document actions removed: buttons were not wired to any handlers */}
               </div>
             ) : (
               <div
@@ -709,7 +719,7 @@ export default function DashboardPage() {
                   color: "var(--text-muted)",
                 }}
               >
-                Tiada permohonan dipilih.
+                {loading ? "Memuatkan..." : "Tiada permohonan dipilih."}
               </div>
             )}
 
@@ -781,24 +791,16 @@ export default function DashboardPage() {
       </div>
 
       <style>{`
-        /* Responsive adjustments to ensure detail panel is visible on mobile */
         @media (max-width: 900px) {
-          /* Stack the two-column main area into a single column */
           .container.section-sm > div:nth-child(2) { grid-template-columns: 1fr !important; }
-          /* Keep the top metrics grid two columns on medium screens */
           .container.section-sm > div:nth-child(1) { grid-template-columns: 1fr 1fr !important; }
-
-          /* Make sure list (first column) and detail (second column) flow vertically */
           .container.section-sm > div:nth-child(2) { display: grid; grid-template-columns: 1fr; }
           .container.section-sm > div:nth-child(2) > div:nth-child(1) { order: 1; }
           .container.section-sm > div:nth-child(2) > div:nth-child(2) { order: 2; }
         }
 
         @media (max-width: 600px) {
-          /* Collapse metrics to single column on small screens */
           .container.section-sm > div:nth-child(1) { grid-template-columns: 1fr !important; }
-
-          /* Keep list above detail on very small screens to avoid overlap/confusion */
           .container.section-sm > div:nth-child(2) { display: grid; grid-template-columns: 1fr; }
           .container.section-sm > div:nth-child(2) > div:nth-child(1) { order: 1; }
           .container.section-sm > div:nth-child(2) > div:nth-child(2) { order: 2; }
