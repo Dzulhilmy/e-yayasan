@@ -42,9 +42,9 @@ const programs = [
 
 const exclusiveFeatures = [
   { icon: TrendingUp, color: '#F5A623', title: 'MyStatus Dashboard', desc: 'Pantau semua permohonan dalam satu papan pemuka bersepadu.', href: '/dashboard' },
-  { icon: FolderLock, color: '#0EA5E9', title: 'Digital Vault', desc: 'Simpan dokumen penting sekali, guna berulang kali.', href: '/vault' },
-  { icon: Bell, color: '#10B981', title: 'Notifikasi Real-Time', desc: 'Terima kemas kini status permohonan serta-merta.', href: '/dashboard' },
-  { icon: ShieldCheck, color: '#8B5CF6', title: 'Login Biometrik', desc: 'Keselamatan tinggi dengan FaceID & PIN 6-digit.', href: '/dashboard' },
+  { icon: FolderLock, color: '#0EA5E9', title: 'Simpanan Dokumen', desc: 'Simpan dokumen penting sekali, guna berulang kali.', href: '/vault' },
+  { icon: Bell, color: '#10B981', title: 'Sistem Notifikasi', desc: 'Terima kemas kini status permohonan serta-merta.', href: '/dashboard' },
+  { icon: ShieldCheck, color: '#8B5CF6', title: 'Log Masuk Biometrik', desc: 'Keselamatan tinggi dengan FaceID & PIN 6-digit.', href: '/dashboard' },
   { icon: MapPin, color: '#F97316', title: 'Perak Prihatin', desc: 'Notifikasi apabila berhampiran Reruai Pameran Yayasan Perak.', href: '/contact' },
   { icon: Bot, color: '#EC4899', title: 'AI Assistant', desc: 'Jawapan segera 24/7 dari Pembantu AI terlatih.', href: '/assistant' },
 ];
