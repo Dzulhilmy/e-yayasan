@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import ProgramCard from "@/components/ProgramCard";
 import {
   BookOpen,
@@ -9,63 +10,67 @@ import {
   ChevronRight,
   Check,
 } from "lucide-react";
+import { createClient } from "@/utils/supabase/client";
 
-const programs = [
-  {
-    id: "insisyp",
-    icon: GraduationCap,
-    color: "#F5A623",
-    bg: "rgba(245,166,35,0.12)",
-    category: "Pendidikan",
-    tag: "Popular",
-    title: "Insentif Siswa Yayasan Perak (INSISYP)",
-    desc: "Bantuan kewangan bagi pelajar cemerlang Perak yang melanjutkan pelajaran ke institut pengajian tinggi dalam dan luar negara.",
-    amount: "RM 1,500 – RM 5,000",
-    deadline: "30 Jun 2026",
-    href: "/login",
-  },
-  {
-    id: "taspendik",
-    icon: BookOpen,
-    color: "#0EA5E9",
-    bg: "rgba(14,165,233,0.12)",
-    category: "Pendidikan",
-    tag: "Terbuka",
-    title: "TASPENDIK – Tabung Pendidikan Anak Perak",
-    desc: "Skim simpanan pendidikan untuk bayi dan kanak-kanak Perak, bertujuan membina tabung pembelajaran sejak awal usia.",
-    amount: "RM 200 Simpanan Permulaan",
-    deadline: "Sepanjang Tahun",
-    href: "/login",
-  },
-  {
-    id: "sayangirumah",
-    icon: Home,
-    color: "#10B981",
-    bg: "rgba(16,185,129,0.12)",
-    category: "Sosial",
-    tag: "Pembaikan Rumah",
-    title: "Sayangi Rumahku",
-    desc: "Program pembaikan dan penambahbaikan rumah untuk keluarga B40 Perak yang memerlukan sokongan segera.",
-    amount: "Sehingga RM 15,000",
-    deadline: "31 Ogos 2026",
-    href: "/login",
-  },
-  {
-    id: "usahawan",
-    icon: Briefcase,
-    color: "#8B5CF6",
-    bg: "rgba(139,92,246,0.12)",
-    category: "Usahawan",
-    tag: "Pinjaman",
-    title: "Pinjaman Tabung Usahawan",
-    desc: "Sokongan modal permulaan untuk usahawan muda Perak yang ingin memulakan atau mengembangkan perniagaan.",
-    amount: "RM 5,000 – RM 50,000",
-    deadline: "30 Sept 2026",
-    href: "/login",
-  },
-];
+const categoryStyles: Record<string, { color: string; bg: string }> = {
+  Pendidikan: { color: "#F5A623", bg: "rgba(245,166,35,0.12)" },
+  Sosial: { color: "#10B981", bg: "rgba(16,185,129,0.12)" },
+  Usahawan: { color: "#8B5CF6", bg: "rgba(139,92,246,0.12)" },
+  default: { color: "#0EA5E9", bg: "rgba(14,165,233,0.12)" },
+};
+
+function getProgramIcon(category?: string) {
+  if (category === "Pendidikan") return GraduationCap;
+  if (category === "Sosial") return Home;
+  if (category?.toLowerCase().includes("usaha")) return Briefcase;
+  return BookOpen;
+}
 
 export default function ProgramsPage() {
+  const [programs, setPrograms] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchPrograms = async () => {
+      setLoading(true);
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from("programs")
+          .select("*")
+          .eq("is_active", true)
+          .order("title");
+
+        if (!error && data) {
+          setPrograms(
+            data.map((item: any) => {
+              const style =
+                categoryStyles[item.category] || categoryStyles.default;
+              return {
+                id: item.id,
+                icon: getProgramIcon(item.category),
+                color: style.color,
+                bg: style.bg,
+                category: item.category || "Lain-lain",
+                tag: item.category || "Terbuka",
+                title: item.title,
+                desc: item.description || item.subtitle || "",
+                amount: item.subtitle || "",
+                deadline: item.deadline || "Semasa",
+                href: item.href || "/login",
+              };
+            }),
+          );
+        }
+      } catch (err) {
+        console.error("Program fetch error:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPrograms();
+  }, []);
+
   return (
     <>
       <div className="page-hero">
@@ -125,9 +130,33 @@ export default function ProgramsPage() {
         </div>
 
         <div className="grid-4">
-          {programs.map((program) => (
-            <ProgramCard key={program.id} program={program} />
-          ))}
+          {loading ? (
+            <div
+              style={{
+                gridColumn: "1 / -1",
+                color: "var(--text-muted)",
+                padding: 24,
+                textAlign: "center",
+              }}
+            >
+              Memuatkan program...
+            </div>
+          ) : programs.length === 0 ? (
+            <div
+              style={{
+                gridColumn: "1 / -1",
+                color: "var(--text-muted)",
+                padding: 24,
+                textAlign: "center",
+              }}
+            >
+              Tiada program aktif ditemui.
+            </div>
+          ) : (
+            programs.map((program) => (
+              <ProgramCard key={program.id} program={program} />
+            ))
+          )}
         </div>
 
         <div

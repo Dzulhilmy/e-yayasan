@@ -1,48 +1,78 @@
 "use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+
+import { useEffect, useState } from "react";
+import { useRouter, useParams } from "next/navigation";
 import { ArrowLeft, Save } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/utils/supabase/client";
 
-export default function CreateProgram() {
+export default function EditCorporateSection() {
   const router = useRouter();
+  const params = useParams();
   const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(true);
   const [form, setForm] = useState({
     title: "",
     subtitle: "",
-    category: "Pendidikan",
-    description: "",
+    slug: "",
     image_url: "",
-    amount: "",
-    is_active: true,
+    content: "",
+    display_order: "0",
   });
+
+  useEffect(() => {
+    const fetchSection = async () => {
+      if (!params.id) return;
+      setFetching(true);
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from("corporate_sections")
+        .select("*")
+        .eq("id", params.id)
+        .single();
+      if (!error && data) {
+        setForm({
+          title: data.title || "",
+          subtitle: data.subtitle || "",
+          slug: data.slug || "",
+          image_url: data.image_url || "",
+          content: data.content || "",
+          display_order: String(data.display_order ?? 0),
+        });
+      } else {
+        console.error("Fetch corporate section error:", error);
+        toast.error("Gagal memuat data seksyen korporat.");
+      }
+      setFetching(false);
+    };
+    fetchSection();
+  }, [params.id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!params.id) return;
     setLoading(true);
-
     try {
       const supabase = createClient();
-      const programAmount = form.amount ? parseFloat(form.amount) : null;
-      const { error } = await supabase.from("programs").insert([
-        {
+      const { error } = await supabase
+        .from("corporate_sections")
+        .update({
           title: form.title,
           subtitle: form.subtitle,
-          category: form.category,
-          description: form.description,
-          image_url: form.image_url,
-          amount: programAmount,
-          is_active: form.is_active,
-        },
-      ]);
-
+          slug: form.slug,
+          image_url: form.image_url || null,
+          content: form.content,
+          display_order: form.display_order
+            ? parseInt(form.display_order, 10)
+            : 0,
+        })
+        .eq("id", params.id);
       if (error) throw error;
-      toast.success("Program berjaya ditambah!");
-      router.push("/admin/programs");
-    } catch (err) {
-      console.error("Create program error:", err);
-      toast.error("Ralat menyimpan program.");
+      toast.success("Seksyeh korporat berjaya dikemas kini.");
+      router.push("/admin/corporate");
+    } catch (err: any) {
+      console.error("Update corporate section error:", err);
+      toast.error("Ralat mengemas kini seksyen korporat.");
     } finally {
       setLoading(false);
     }
@@ -54,7 +84,7 @@ export default function CreateProgram() {
         display: "flex",
         flexDirection: "column",
         gap: 24,
-        maxWidth: 800,
+        maxWidth: 840,
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
@@ -76,7 +106,7 @@ export default function CreateProgram() {
           <ArrowLeft size={18} />
         </button>
         <h1 style={{ fontSize: "1.4rem", fontWeight: 700 }}>
-          Tambah Program Baru
+          Sunting Seksyen Korporat
         </h1>
       </div>
 
@@ -104,14 +134,16 @@ export default function CreateProgram() {
                 color: "var(--text-muted)",
               }}
             >
-              Nama Program
+              Tajuk Seksyen
             </label>
             <input
               required
               type="text"
               value={form.title}
-              onChange={(e) => setForm({ ...form, title: e.target.value })}
-              placeholder="Cth: Bantuan Khas Mahasiswa"
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, title: e.target.value }))
+              }
+              placeholder="Contoh: Pengenalan"
               style={{
                 width: "100%",
                 padding: "12px 16px",
@@ -123,6 +155,7 @@ export default function CreateProgram() {
               }}
             />
           </div>
+
           <div>
             <label
               style={{
@@ -132,43 +165,16 @@ export default function CreateProgram() {
                 color: "var(--text-muted)",
               }}
             >
-              Kategori
-            </label>
-            <select
-              value={form.category}
-              onChange={(e) => setForm({ ...form, category: e.target.value })}
-              style={{
-                width: "100%",
-                padding: "12px 16px",
-                background: "var(--navy-mid)",
-                border: "1px solid var(--border)",
-                borderRadius: 12,
-                color: "#fff",
-                outline: "none",
-              }}
-            >
-              <option>Pendidikan</option>
-              <option>Modal Insan</option>
-              <option>Keusahawanan</option>
-              <option>Sosial</option>
-            </select>
-          </div>
-          <div>
-            <label
-              style={{
-                display: "block",
-                marginBottom: 8,
-                fontSize: "0.85rem",
-                color: "var(--text-muted)",
-              }}
-            >
-              Ringkasan / Subtajuk
+              Slug
             </label>
             <input
+              required
               type="text"
-              value={form.subtitle}
-              onChange={(e) => setForm({ ...form, subtitle: e.target.value })}
-              placeholder="Cth: Bantuan IPT"
+              value={form.slug}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, slug: e.target.value }))
+              }
+              placeholder="contoh-pengenalan"
               style={{
                 width: "100%",
                 padding: "12px 16px",
@@ -180,6 +186,7 @@ export default function CreateProgram() {
               }}
             />
           </div>
+
           <div>
             <label
               style={{
@@ -189,44 +196,15 @@ export default function CreateProgram() {
                 color: "var(--text-muted)",
               }}
             >
-              Status Aktif
-            </label>
-            <select
-              value={form.is_active ? "true" : "false"}
-              onChange={(e) =>
-                setForm({ ...form, is_active: e.target.value === "true" })
-              }
-              style={{
-                width: "100%",
-                padding: "12px 16px",
-                background: "var(--navy-mid)",
-                border: "1px solid var(--border)",
-                borderRadius: 12,
-                color: "#fff",
-                outline: "none",
-              }}
-            >
-              <option value="true">Aktif</option>
-              <option value="false">Tidak Aktif</option>
-            </select>
-          </div>
-          <div>
-            <label
-              style={{
-                display: "block",
-                marginBottom: 8,
-                fontSize: "0.85rem",
-                color: "var(--text-muted)",
-              }}
-            >
-              Jumlah Program (RM)
+              Susunan
             </label>
             <input
               type="number"
-              step="0.01"
-              value={form.amount}
-              onChange={(e) => setForm({ ...form, amount: e.target.value })}
-              placeholder="500.00"
+              value={form.display_order}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, display_order: e.target.value }))
+              }
+              placeholder="0"
               style={{
                 width: "100%",
                 padding: "12px 16px",
@@ -238,7 +216,8 @@ export default function CreateProgram() {
               }}
             />
           </div>
-          <div style={{ gridColumn: "1 / -1" }}>
+
+          <div>
             <label
               style={{
                 display: "block",
@@ -247,12 +226,14 @@ export default function CreateProgram() {
                 color: "var(--text-muted)",
               }}
             >
-              Image URL
+              Imej URL (pilihan)
             </label>
             <input
               type="url"
               value={form.image_url}
-              onChange={(e) => setForm({ ...form, image_url: e.target.value })}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, image_url: e.target.value }))
+              }
               placeholder="https://example.com/image.jpg"
               style={{
                 width: "100%",
@@ -265,6 +246,7 @@ export default function CreateProgram() {
               }}
             />
           </div>
+
           <div style={{ gridColumn: "1 / -1" }}>
             <label
               style={{
@@ -274,16 +256,46 @@ export default function CreateProgram() {
                 color: "var(--text-muted)",
               }}
             >
-              Deskripsi Program
+              Ringkasan / Subtitle
+            </label>
+            <input
+              type="text"
+              value={form.subtitle}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, subtitle: e.target.value }))
+              }
+              placeholder="Contoh: Visi dan Misi Yayasan Perak"
+              style={{
+                width: "100%",
+                padding: "12px 16px",
+                background: "var(--navy-mid)",
+                border: "1px solid var(--border)",
+                borderRadius: 12,
+                color: "#fff",
+                outline: "none",
+              }}
+            />
+          </div>
+
+          <div style={{ gridColumn: "1 / -1" }}>
+            <label
+              style={{
+                display: "block",
+                marginBottom: 8,
+                fontSize: "0.85rem",
+                color: "var(--text-muted)",
+              }}
+            >
+              Kandungan
             </label>
             <textarea
               required
-              rows={4}
-              value={form.description}
+              rows={8}
+              value={form.content}
               onChange={(e) =>
-                setForm({ ...form, description: e.target.value })
+                setForm((prev) => ({ ...prev, content: e.target.value }))
               }
-              placeholder="Penerangan lengkap mengenai program ini..."
+              placeholder="Tulis kandungan untuk seksyen ini..."
               style={{
                 width: "100%",
                 padding: "12px 16px",
@@ -302,12 +314,12 @@ export default function CreateProgram() {
           style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}
         >
           <button
-            disabled={loading}
+            disabled={loading || fetching}
             type="submit"
             className="btn btn-primary"
             style={{ gap: 8 }}
           >
-            <Save size={18} /> Simpan Program
+            <Save size={18} /> Simpan Perubahan
           </button>
         </div>
       </form>

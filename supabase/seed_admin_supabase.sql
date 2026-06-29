@@ -29,12 +29,31 @@ CREATE TABLE IF NOT EXISTS public.programs (
   subtitle TEXT,
   category TEXT,
   description TEXT,
+  image_url TEXT,
+  amount NUMERIC(12,2),
   is_active BOOLEAN DEFAULT true NOT NULL,
   required_documents TEXT[] DEFAULT '{}'::text[] NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+ALTER TABLE IF EXISTS public.programs ADD COLUMN IF NOT EXISTS image_url TEXT;
+ALTER TABLE IF EXISTS public.programs ADD COLUMN IF NOT EXISTS amount NUMERIC(12,2);
 
--- 4. Jadual Berita & Pengumuman Terkini (public.feed_posts)
+-- 4. Jadual Seksyen Korporat (public.corporate_sections)
+CREATE TABLE IF NOT EXISTS public.corporate_sections (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title TEXT NOT NULL,
+  subtitle TEXT,
+  slug TEXT UNIQUE NOT NULL,
+  image_url TEXT,
+  content TEXT,
+  display_order INTEGER DEFAULT 0 NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+ALTER TABLE IF EXISTS public.corporate_sections ADD COLUMN IF NOT EXISTS image_url TEXT;
+ALTER TABLE IF EXISTS public.corporate_sections ADD COLUMN IF NOT EXISTS display_order INTEGER DEFAULT 0;
+
+-- 5. Jadual Berita & Pengumuman Terkini (public.feed_posts)
 CREATE TABLE IF NOT EXISTS public.feed_posts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   title TEXT UNIQUE NOT NULL,
@@ -141,6 +160,15 @@ CREATE POLICY "Sesiapa sahaja boleh melihat program aktif"
 
 CREATE POLICY "Pentadbir boleh menguruskan program"
   ON public.programs FOR ALL
+  USING (public.is_admin());
+
+-- Polisi Corporate Sections (Info Korporat)
+CREATE POLICY "Sesiapa sahaja boleh melihat seksyen korporat"
+  ON public.corporate_sections FOR SELECT
+  USING (true);
+
+CREATE POLICY "Pentadbir boleh menguruskan seksyen korporat"
+  ON public.corporate_sections FOR ALL
   USING (public.is_admin());
 
 -- Polisi Feed Posts (Berita)
@@ -271,12 +299,12 @@ VALUES (
 ) ON CONFLICT (user_id) DO NOTHING;
 
 -- Program Bantuan Lalai
-INSERT INTO public.programs (title, subtitle, category, description, is_active, required_documents)
+INSERT INTO public.programs (title, subtitle, category, description, image_url, is_active, required_documents)
 VALUES 
-('Insentif Siswa Yayasan Perak (INSISYP)', 'Bantuan IPT', 'Pendidikan', 'Bantuan kewangan bagi pelajar cemerlang Perak yang melanjutkan pelajaran ke institut pengajian tinggi dalam dan luar negara.', true, ARRAY['Salinan Kad Pengenalan', 'Surat Tawaran Universiti', 'Slip Gaji Ibu Bapa']),
-('TASPENDIK – Tabung Pendidikan Anak Perak', 'Tabung Pendidikan', 'Pendidikan', 'Skim simpanan pendidikan untuk bayi dan kanak-kanak Perak, bertujuan membina tabung pembelajaran sejak awal usia.', true, ARRAY['Salinan Kad Pengenalan Ibu/Bapa', 'Sijil Lahir Anak']),
-('Sayangi Rumahku', 'Bantuan Rumah B40', 'Sosial', 'Program pembaikan dan penambahbaikan rumah untuk keluarga B40 Perak yang memerlukan sokongan segera.', true, ARRAY['Salinan Kad Pengenalan Pemohon', 'Geran Tanah / Kebenaran Menduduki', 'Slip Gaji / Pengesahan Pendapatan']),
-('Pinjaman Tabung Usahawan', 'Modal PKS', 'Usahawan', 'Sokongan modal permulaan untuk usahawan muda Perak yang ingin memulakan atau mengembangkan perniagaan.', true, ARRAY['Salinan Kad Pengenalan Pemohon', 'Sijil Pendaftaran Perniagaan (SSM)', 'Pelan Perniagaan Ringkas'])
+('Insentif Siswa Yayasan Perak (INSISYP)', 'Bantuan IPT', 'Pendidikan', 'Bantuan kewangan bagi pelajar cemerlang Perak yang melanjutkan pelajaran ke institut pengajian tinggi dalam dan luar negara.', 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?q=80&w=1000&auto=format&fit=crop', true, ARRAY['Salinan Kad Pengenalan', 'Surat Tawaran Universiti', 'Slip Gaji Ibu Bapa']),
+('TASPENDIK – Tabung Pendidikan Anak Perak', 'Tabung Pendidikan', 'Pendidikan', 'Skim simpanan pendidikan untuk bayi dan kanak-kanak Perak, bertujuan membina tabung pembelajaran sejak awal usia.', 'https://images.unsplash.com/photo-1498079022511-d15614cb1c02?q=80&w=1000&auto=format&fit=crop', true, ARRAY['Salinan Kad Pengenalan Ibu/Bapa', 'Sijil Lahir Anak']),
+('Sayangi Rumahku', 'Bantuan Rumah B40', 'Sosial', 'Program pembaikan dan penambahbaikan rumah untuk keluarga B40 Perak yang memerlukan sokongan segera.', 'https://images.unsplash.com/photo-1494526585095-c41746248156?q=80&w=1000&auto=format&fit=crop', true, ARRAY['Salinan Kad Pengenalan Pemohon', 'Geran Tanah / Kebenaran Menduduki', 'Slip Gaji / Pengesahan Pendapatan']),
+('Pinjaman Tabung Usahawan', 'Modal PKS', 'Usahawan', 'Sokongan modal permulaan untuk usahawan muda Perak yang ingin memulakan atau mengembangkan perniagaan.', 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?q=80&w=1000&auto=format&fit=crop', true, ARRAY['Salinan Kad Pengenalan Pemohon', 'Sijil Pendaftaran Perniagaan (SSM)', 'Pelan Perniagaan Ringkas'])
 ON CONFLICT (title) DO NOTHING;
 
 -- Berita & Pengumuman Lalai

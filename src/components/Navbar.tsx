@@ -24,12 +24,14 @@ const publicLinks = [
   { href: "/programs", label: "Program", icon: BookOpen },
   { href: "/feed", label: "Berita", icon: Rss },
   { href: "/info", label: "Info", icon: Info },
+  { href: "/corporate", label: "Korporat", icon: Info },
 ];
 
 const privateLinks = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/programs", label: "Program", icon: BookOpen },
   { href: "/info", label: "Info", icon: Info },
+  { href: "/corporate", label: "Korporat", icon: Info },
   { href: "/vault", label: "Vault", icon: FolderLock },
 ];
 
@@ -47,7 +49,9 @@ export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
-  const isAdmin = !!(profile?.is_admin === true || profile?.meta?.is_admin === true);
+  const isAdmin = !!(
+    profile?.is_admin === true || profile?.meta?.is_admin === true
+  );
   const navLinks = user
     ? isAdmin
       ? [...privateLinks, ...adminLinks]

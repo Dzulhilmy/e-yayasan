@@ -1,51 +1,52 @@
 "use client";
-import { useState, useEffect, useMemo } from "react";
+
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { Search, Plus, Edit2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
-export default function AdminInfo() {
+export default function AdminCorporate() {
   const router = useRouter();
-  const [infos, setInfos] = useState<any[]>([]);
+  const [sections, setSections] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Fix 1: memoize so client isn't recreated on every render
   const supabase = useMemo(() => createClient(), []);
 
-  // Fix 2: supabase added to dependency array
   useEffect(() => {
-    async function fetchInfos() {
+    const fetchSections = async () => {
       const { data, error } = await supabase
-        .from("infos")
+        .from("corporate_sections")
         .select("*")
-        .order("date", { ascending: false });
-
+        .order("display_order", { ascending: true });
       if (error) {
-        console.error("Fetch error:", error);
-        toast.error("Gagal mengambil data dari database.");
+        console.error("Fetch corporate sections error:", error);
+        toast.error("Gagal memuatkan seksyen korporat.");
       } else {
-        setInfos(data || []);
+        setSections(data || []);
       }
       setLoading(false);
-    }
-    fetchInfos();
+    };
+    fetchSections();
   }, [supabase]);
 
-  const handleAdd = () => router.push("/admin/info/create");
-  const handleEdit = (id: string) => router.push(`/admin/info/edit/${id}`);
+  const handleAdd = () => router.push("/admin/corporate/create");
 
-  // Fix 3: was called as handleDelete(info.title) — missing id, wrong arg order
-  // Fix 4: functional setState to avoid stale closure
+  const handleEdit = (id: string) => router.push(`/admin/corporate/edit/${id}`);
+
   const handleDelete = async (id: string, title: string) => {
-    if (!confirm(`Padam info "${title}"?`)) return;
-    const { error } = await supabase.from("infos").delete().eq("id", id);
+    if (!confirm(`Padam seksyen korporat "${title}"?`)) return;
+    const { error } = await supabase
+      .from("corporate_sections")
+      .delete()
+      .eq("id", id);
     if (error) {
-      toast.error("Gagal memadam info.");
-    } else {
-      toast.success("Info berjaya dipadam.");
-      setInfos((prev) => prev.filter((i) => i.id !== id));
+      toast.error("Gagal memadam seksyen.");
+      console.error("Delete error:", error);
+      return;
     }
+    setSections((prev) => prev.filter((section) => section.id !== id));
+    toast.success(`Seksyeh "${title}" telah dipadam.`);
   };
 
   return (
@@ -57,36 +58,20 @@ export default function AdminInfo() {
           alignItems: "center",
         }}
       >
-        <div style={{ position: "relative", width: 300 }}>
-          <Search
-            size={18}
-            style={{
-              position: "absolute",
-              left: 16,
-              top: 14,
-              color: "var(--text-muted)",
-            }}
-          />
-          <input
-            type="text"
-            placeholder="Cari info..."
-            style={{
-              width: "100%",
-              padding: "12px 16px 12px 42px",
-              background: "var(--navy-card)",
-              border: "1px solid var(--border)",
-              borderRadius: 12,
-              color: "#fff",
-              outline: "none",
-            }}
-          />
+        <div>
+          <h1 style={{ margin: 0, fontSize: "1.6rem", fontWeight: 700 }}>
+            Pengurusan Korporat
+          </h1>
+          <p style={{ margin: "8px 0 0", color: "var(--text-muted)" }}>
+            Urus semua seksyen korporat dalam satu halaman.
+          </p>
         </div>
         <button
           onClick={handleAdd}
           className="btn btn-primary"
           style={{ gap: 8 }}
         >
-          <Plus size={18} /> Tambah Info
+          <Plus size={18} /> Tambah Seksyen
         </button>
       </div>
 
@@ -120,7 +105,7 @@ export default function AdminInfo() {
                   fontSize: "0.85rem",
                 }}
               >
-                Tajuk Info
+                Seksyen
               </th>
               <th
                 style={{
@@ -130,7 +115,7 @@ export default function AdminInfo() {
                   fontSize: "0.85rem",
                 }}
               >
-                Kategori
+                Slug
               </th>
               <th
                 style={{
@@ -140,7 +125,7 @@ export default function AdminInfo() {
                   fontSize: "0.85rem",
                 }}
               >
-                Tarikh
+                Susunan
               </th>
               <th
                 style={{
@@ -168,7 +153,7 @@ export default function AdminInfo() {
                   Memuatkan...
                 </td>
               </tr>
-            ) : infos.length === 0 ? (
+            ) : sections.length === 0 ? (
               <tr>
                 <td
                   colSpan={4}
@@ -178,86 +163,50 @@ export default function AdminInfo() {
                     color: "var(--text-muted)",
                   }}
                 >
-                  Tiada info ditemui.
+                  Tiada seksyen korporat ditemui.
                 </td>
               </tr>
             ) : (
-              infos.map((info) => (
+              sections.map((section) => (
                 <tr
-                  key={info.id}
+                  key={section.id}
                   style={{ borderBottom: "1px solid var(--border)" }}
                 >
                   <td style={{ padding: "16px 24px" }}>
-                    <div
-                      style={{ display: "flex", alignItems: "center", gap: 16 }}
-                    >
-                      <div
-                        style={{
-                          width: 64,
-                          height: 48,
-                          borderRadius: 8,
-                          overflow: "hidden",
-                          flexShrink: 0,
-                          background: `${info.color || "#fff"}20`,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
-                        {info.image_url ? (
-                          <img
-                            src={info.image_url}
-                            alt="Thumbnail"
-                            style={{
-                              width: "100%",
-                              height: "100%",
-                              objectFit: "cover",
-                            }}
-                          />
-                        ) : (
-                          <div
-                            style={{
-                              width: 12,
-                              height: 12,
-                              borderRadius: "50%",
-                              background: info.color || "#fff",
-                            }}
-                          />
-                        )}
-                      </div>
-                      <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>
-                        {info.title}
-                      </div>
+                    <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                      {section.title}
                     </div>
-                  </td>
-                  <td style={{ padding: "16px 24px" }}>
-                    <span
+                    <div
                       style={{
-                        fontSize: "0.7rem",
-                        fontWeight: 700,
-                        color: info.color,
-                        background: `${info.color}15`,
-                        padding: "4px 10px",
-                        borderRadius: 100,
-                        border: `1px solid ${info.color}30`,
+                        fontSize: "0.85rem",
+                        color: "var(--text-muted)",
                       }}
                     >
-                      {info.category}
-                    </span>
+                      {section.subtitle || "-"}
+                    </div>
                   </td>
                   <td
                     style={{
                       padding: "16px 24px",
-                      fontSize: "0.85rem",
+                      fontSize: "0.9rem",
+                      color: "white",
+                    }}
+                  >
+                    {section.slug}
+                  </td>
+                  <td
+                    style={{
+                      padding: "16px 24px",
+                      fontSize: "0.9rem",
                       color: "var(--text-muted)",
                     }}
                   >
-                    {new Date(info.date).toLocaleDateString("ms-MY")}
+                    {section.display_order ?? "-"}
                   </td>
                   <td style={{ padding: "16px 24px" }}>
                     <div style={{ display: "flex", gap: 12 }}>
                       <button
-                        onClick={() => handleEdit(info.id)}
+                        onClick={() => handleEdit(section.id)}
                         style={{
                           background: "none",
                           border: "none",
@@ -268,9 +217,8 @@ export default function AdminInfo() {
                       >
                         <Edit2 size={18} />
                       </button>
-                      {/* Fix: was handleDelete(info.title) — now correctly passes both id and title */}
                       <button
-                        onClick={() => handleDelete(info.id, info.title)}
+                        onClick={() => handleDelete(section.id, section.title)}
                         style={{
                           background: "none",
                           border: "none",
