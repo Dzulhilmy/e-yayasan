@@ -67,6 +67,24 @@ CREATE TABLE IF NOT EXISTS public.feed_posts (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
+-- 5a. Jadual Hubungi (public.contacts)
+CREATE TABLE IF NOT EXISTS public.contacts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  office_name TEXT NOT NULL UNIQUE,
+  address TEXT,
+  phone TEXT,
+  whatsapp TEXT,
+  fax TEXT,
+  email TEXT,
+  hours TEXT,
+  is_head_office BOOLEAN DEFAULT false NOT NULL,
+  map_url TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE IF EXISTS public.contacts ENABLE ROW LEVEL SECURITY;
+
 -- 5. Jadual Info Pilihan (public.infos)
 CREATE TABLE IF NOT EXISTS public.infos (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -178,6 +196,15 @@ CREATE POLICY "Sesiapa sahaja boleh melihat berita"
 
 CREATE POLICY "Pentadbir boleh menguruskan berita"
   ON public.feed_posts FOR ALL
+  USING (public.is_admin());
+
+-- Polisi Contacts
+CREATE POLICY "Sesiapa sahaja boleh melihat hubungi"
+  ON public.contacts FOR SELECT
+  USING (true);
+
+CREATE POLICY "Pentadbir boleh menguruskan hubungi"
+  ON public.contacts FOR ALL
   USING (public.is_admin());
 
 -- Polisi Infos
@@ -322,3 +349,10 @@ VALUES
 ('Notis: Permohonan Bantuan INSISYP 2026 Dibuka', 'Notis Rasmi', 'Permohonan bantuan insentif pelajar cemerlang (INSISYP) sesi 2026 kini dibuka. Semua pelajar yang memenuhi syarat adalah digalakkan untuk memohon.', '', '#F5A623', '01 Jun 2026'),
 ('Pengumuman: Cuti Perayaan Hari Wesak', 'Pengumuman', 'Yayasan Perak akan ditutup pada 12 Mei 2026 sempena Hari Wesak. Semua perkhidmatan akan disambung semula pada 13 Mei 2026.', '', '#0EA5E9', '12 Mei 2026')
 ON CONFLICT (title) DO NOTHING;
+
+-- Data Hubungi Lalai
+INSERT INTO public.contacts (office_name, address, phone, whatsapp, fax, email, hours, is_head_office, map_url)
+VALUES
+('Yayasan Perak - Ibu Pejabat', 'Yayasan Perak, Tingkat 1, Wisma Yayasan Perak, No. 111, Jalan Sultan Idris Shah, 30000 Ipoh, Perak', '05-255 2929/ 253 7779', '+60 13-494 5300', '05-2531701', 'info@yayasanperak.com.my', 'Isnin – Khamis : 8.30 pagi – 5.30 petang (Rehat : 1.00 t/hari - 2.00 petang)\nJumaat : 8.30 pagi – 5.30 petang (Rehat : 12.15 t/hari – 2.45 petang)\nSabtu & Ahad : Tutup', true, 'https://maps.google.com/?q=Wisma+Yayasan+Perak+Ipoh'),
+('Bahagian Modal Insan Yayasan Perak', 'Bahagian Modal Insan Yayasan Perak, Tingkat 2, Bangunan UMNO Negeri Perak, No. 112, Jalan Sultan Idris Shah, 30000 Ipoh, Perak', '05-255 2929/ 253 7779', '+60 13-494 5300', '05-2531701', 'info@yayasanperak.com.my', 'Isnin – Khamis : 8.30 pagi – 5.30 petang (Rehat : 1.00 t/hari - 2.00 petang)\nJumaat : 8.30 pagi – 5.30 petang (Rehat : 12.15 t/hari – 2.45 petang)\nSabtu & Ahad : Tutup', false, 'https://maps.google.com/?q=Bangunan+UMNO+Negeri+Perak+Ipoh')
+ON CONFLICT (office_name) DO NOTHING;
