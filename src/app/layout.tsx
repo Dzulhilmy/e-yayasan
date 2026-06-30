@@ -13,8 +13,8 @@ export const metadata: Metadata = {
     siteName: 'e-YP Yayasan Perak',
   },
   icons: {
-    icon: 'public/logo-yp.png',
-    apple: 'public/logo-yp.png',
+    icon: '/logo-yp.png',
+    apple: '/logo-yp.png',
   },
     
 };
