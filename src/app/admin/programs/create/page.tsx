@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Save } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/utils/supabase/client";
+import ImageUpload from "@/components/ImageUpload";
 
 export default function CreateProgram() {
   const router = useRouter();
@@ -14,6 +15,7 @@ export default function CreateProgram() {
     category: "Pendidikan",
     description: "",
     image_url: "",
+    featured_image_url: "",
     amount: "",
     is_active: true,
   });
@@ -32,6 +34,7 @@ export default function CreateProgram() {
           category: form.category,
           description: form.description,
           image_url: form.image_url,
+          featured_image_url: form.featured_image_url || null,
           amount: programAmount,
           is_active: form.is_active,
         },
@@ -238,33 +241,24 @@ export default function CreateProgram() {
               }}
             />
           </div>
-          <div style={{ gridColumn: "1 / -1" }}>
-            <label
-              style={{
-                display: "block",
-                marginBottom: 8,
-                fontSize: "0.85rem",
-                color: "var(--text-muted)",
-              }}
-            >
-              Image URL
-            </label>
-            <input
-              type="url"
-              value={form.image_url}
-              onChange={(e) => setForm({ ...form, image_url: e.target.value })}
-              placeholder="https://example.com/image.jpg"
-              style={{
-                width: "100%",
-                padding: "12px 16px",
-                background: "var(--navy-mid)",
-                border: "1px solid var(--border)",
-                borderRadius: 12,
-                color: "#fff",
-                outline: "none",
-              }}
-            />
-          </div>
+          <ImageUpload
+            label="Gambar Kecil Program (Admin Thumbnail)"
+            hint="(Thumbnail untuk paparan senarai admin)"
+            value={form.image_url}
+            bucket="profile-avatars"
+            folder="programs/thumbnails"
+            onChange={(url) => setForm({ ...form, image_url: url })}
+          />
+
+          <ImageUpload
+            label="Gambar Utama Program (Featured Image)"
+            hint="(Paparan Utama Halaman Hadapan)"
+            accent="#F5A623"
+            value={form.featured_image_url}
+            bucket="profile-avatars"
+            folder="programs/featured"
+            onChange={(url) => setForm({ ...form, featured_image_url: url })}
+          />
           <div style={{ gridColumn: "1 / -1" }}>
             <label
               style={{

@@ -13,6 +13,7 @@ import {
   X,
   Bell,
   User,
+  Users,
   LogOut,
   ShieldCheck,
 } from "lucide-react";
@@ -24,14 +25,14 @@ const publicLinks = [
   { href: "/programs", label: "Program", icon: BookOpen },
   { href: "/feed", label: "Berita", icon: Rss },
   { href: "/info", label: "Info", icon: Info },
-  { href: "/corporate", label: "Korporat", icon: Info },
+  { href: "/corporate", label: "Korporat", icon: Users },
 ];
 
 const privateLinks = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/programs", label: "Program", icon: BookOpen },
   { href: "/info", label: "Info", icon: Info },
-  { href: "/corporate", label: "Korporat", icon: Info },
+  { href: "/corporate", label: "Korporat", icon: Users },
   { href: "/vault", label: "Vault", icon: FolderLock },
 ];
 

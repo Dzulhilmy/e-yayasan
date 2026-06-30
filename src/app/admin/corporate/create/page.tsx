@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Save } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/utils/supabase/client";
+import ImageUpload from "@/components/ImageUpload";
 
 function createSlug(value: string) {
   return value
@@ -197,33 +198,14 @@ export default function CreateCorporateSection() {
             />
           </div>
 
-          <div>
-            <label
-              style={{
-                display: "block",
-                marginBottom: 8,
-                fontSize: "0.85rem",
-                color: "var(--text-muted)",
-              }}
-            >
-              Imej URL (pilihan)
-            </label>
-            <input
-              type="url"
-              value={form.image_url}
-              onChange={(e) => handleChange("image_url", e.target.value)}
-              placeholder="https://example.com/image.jpg"
-              style={{
-                width: "100%",
-                padding: "12px 16px",
-                background: "var(--navy-mid)",
-                border: "1px solid var(--border)",
-                borderRadius: 12,
-                color: "#fff",
-                outline: "none",
-              }}
-            />
-          </div>
+          <ImageUpload
+            label="Imej Seksyen (Pilihan)"
+            hint="(Gambar hiasan untuk seksyen ini)"
+            value={form.image_url}
+            bucket="profile-avatars"
+            folder="corporate"
+            onChange={(url) => handleChange("image_url", url)}
+          />
 
           <div style={{ gridColumn: "1 / -1" }}>
             <label

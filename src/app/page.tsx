@@ -72,12 +72,11 @@ const exclusiveFeatures = [
 // before it was fixed below. Both are now fetched live inside the
 // component via useEffect, same pattern as the programs fetch.
 
-const homeQuotes = [
-  { id: "1", text: "Toughest moments are the ones that build the strongest character. Keep going, your breakthrough is near.", author: "Yayasan Perak", color: "#F5A623" },
-  { id: "2", text: "Ilmu adalah cahaya yang menerangi jalan hidup. Jadikan pendidikan sebagai senjata paling ampuh untuk mengubah nasib.", author: "Yayasan Perak", color: "#0EA5E9" },
-  { id: "3", text: "Setiap anak Perak adalah amanah yang perlu dijaga. Bersama, kita bina masa depan yang lebih gemilang.", author: "Yayasan Perak", color: "#10B981" },
-  { id: "4", text: "\"Sesungguhnya Allah tidak mengubah keadaan sesuatu kaum kecuali mereka mengubah keadaan yang ada pada diri mereka.\" — Ar-Ra'd: 11", author: "Al-Quran", color: "#8B5CF6" },
-];
+// REMOVED: hardcoded `homeQuotes` array (text/author/color shape) used
+// to live here. The real `quotes` table only has id, image_url,
+// created_at — no text/author column at all, same mismatch found on the
+// dedicated /quotes page. This section now fetches real image rows
+// below and renders an image carousel instead of a text-quote carousel.
 
 // ─── Info Carousel Component (homepage version) ───────────────────────────
 // Now takes its items as a prop instead of reading the removed
@@ -146,6 +145,8 @@ function HomeInfoCarousel({ items }: { items: any[] }) {
 
 export default function HomePage() {
   const [animated, setAnimated] = useState(false);
+  const [quoteImages, setQuoteImages] = useState<{ id: string; image_url: string }[]>([]);
+  const [loadingQuotes, setLoadingQuotes] = useState(true);
   const [activeQuote, setActiveQuote] = useState(0);
   const [likedQuotes, setLikedQuotes] = useState<Set<string>>(new Set());
 
@@ -159,10 +160,43 @@ export default function HomePage() {
   const [loadingInfo, setLoadingInfo] = useState(true);
 
   useEffect(() => { setTimeout(() => setAnimated(true), 100); }, []);
+  // ── YP Quotes (NEW — replaces the hardcoded `homeQuotes` array) ─────────
+  // Fetches real rows from `quotes` (id, image_url, created_at only — no
+  // text/author column exists in the schema). If the table is empty, we
+  // simply leave quoteImages as [] and the section below renders nothing,
+  // no mock fallback — matches what was done on the dedicated /quotes page.
   useEffect(() => {
-    const t = setInterval(() => setActiveQuote((p) => (p + 1) % homeQuotes.length), 5000);
-    return () => clearInterval(t);
+    const fetchQuotes = async () => {
+      setLoadingQuotes(true);
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from("quotes")
+          .select("id, image_url")
+          .order("created_at", { ascending: false })
+          .limit(8);
+
+        if (error) {
+          console.error("Home quotes fetch error:", error);
+          setQuoteImages([]);
+          return;
+        }
+        setQuoteImages(data ?? []);
+      } catch (err) {
+        console.error("Home quotes fetch error:", err);
+        setQuoteImages([]);
+      } finally {
+        setLoadingQuotes(false);
+      }
+    };
+    fetchQuotes();
   }, []);
+
+  useEffect(() => {
+    if (quoteImages.length === 0) return;
+    const t = setInterval(() => setActiveQuote((p) => (p + 1) % quoteImages.length), 5000);
+    return () => clearInterval(t);
+  }, [quoteImages.length]);
 
   // ── Programs (already working — unchanged) ──────────────────────────────
   useEffect(() => {
@@ -501,34 +535,51 @@ export default function HomePage() {
       </section>
 
       {/* ─── YP QUOTES ─── */}
-      <section className="section">
-        <div className="container">
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 36, flexWrap: "wrap", gap: 16 }}>
-            <div>
-              <div className="section-label" style={{ marginBottom: 12 }}><Sparkles size={16} /> YP Quotes</div>
-              <h2 className="heading-md">Kata-kata <span className="gradient-text">Ilham</span></h2>
-            </div>
-            <Link href="/quotes" className="btn btn-ghost btn-sm">Lihat Semua <ArrowRight size={14} /></Link>
-          </div>
-          <div style={{ marginBottom: 28, padding: "36px", background: `linear-gradient(135deg, ${homeQuotes[activeQuote].color}12 0%, var(--navy-card) 100%)`, border: `1px solid ${homeQuotes[activeQuote].color}25`, borderRadius: "var(--radius-lg)", position: "relative", overflow: "hidden", transition: "all 0.5s ease" }}>
-            <div style={{ position: "absolute", top: -40, right: -40, width: 200, height: 200, borderRadius: "50%", background: `radial-gradient(circle, ${homeQuotes[activeQuote].color}15 0%, transparent 70%)` }} />
-            <div style={{ width: 44, height: 44, borderRadius: 12, background: `${homeQuotes[activeQuote].color}20`, border: `1px solid ${homeQuotes[activeQuote].color}35`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
-              <Quote size={22} style={{ color: homeQuotes[activeQuote].color }} />
-            </div>
-            <p style={{ fontSize: "clamp(1rem,2.2vw,1.2rem)", fontStyle: "italic", lineHeight: 1.8, fontWeight: 500, marginBottom: 16, color: "var(--text-primary)", position: "relative", zIndex: 1 }}>
-              "{homeQuotes[activeQuote].text}"
-            </p>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", fontWeight: 600 }}>— {homeQuotes[activeQuote].author}</p>
-              <div style={{ display: "flex", gap: 8 }}>
-                {homeQuotes.map((_, i) => (
-                  <button key={i} onClick={() => setActiveQuote(i)} style={{ width: i === activeQuote ? 20 : 7, height: 7, borderRadius: 100, background: i === activeQuote ? homeQuotes[activeQuote].color : "rgba(255,255,255,0.2)", border: "none", cursor: "pointer", padding: 0, transition: "all 0.3s ease" }} />
-                ))}
+      {/* Section is skipped entirely if there are no rows in `quotes` —
+          no mock fallback, per the same approach used on /quotes page. */}
+      {!loadingQuotes && quoteImages.length > 0 && (
+        <section className="section">
+          <div className="container">
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 36, flexWrap: "wrap", gap: 16 }}>
+              <div>
+                <div className="section-label" style={{ marginBottom: 12 }}><Sparkles size={16} /> YP Quotes</div>
+                <h2 className="heading-md">Kata-kata <span className="gradient-text">Ilham</span></h2>
               </div>
+              <Link href="/quotes" className="btn btn-ghost btn-sm">Lihat Semua <ArrowRight size={14} /></Link>
+            </div>
+
+            <div style={{
+              maxWidth: 480, margin: "0 auto", position: "relative",
+              borderRadius: "var(--radius-lg)", overflow: "hidden",
+              border: "1px solid var(--border)", background: "var(--navy-card)",
+              aspectRatio: "4/3",
+            }}>
+              <img
+                key={quoteImages[activeQuote].id}
+                src={quoteImages[activeQuote].image_url}
+                alt="YP Quote"
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              />
+
+              {quoteImages.length > 1 && (
+                <div style={{ position: "absolute", bottom: 16, left: "50%", transform: "translateX(-50%)", display: "flex", gap: 8 }}>
+                  {quoteImages.map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setActiveQuote(i)}
+                      style={{
+                        width: i === activeQuote ? 20 : 7, height: 7, borderRadius: 100,
+                        background: i === activeQuote ? "var(--gold)" : "rgba(255,255,255,0.4)",
+                        border: "none", cursor: "pointer", padding: 0, transition: "all 0.3s ease",
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* ─── CTA BANNER ─── */}
       <section className="section-sm">

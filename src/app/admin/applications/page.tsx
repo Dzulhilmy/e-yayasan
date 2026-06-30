@@ -158,7 +158,7 @@ export default function AdminApplicationsPage() {
           return !status.includes("tolak") && !status.includes("rejected");
         }),
       );
-      setSelected((s) => {
+      setSelected((s: AppRow | null) => {
         if (!s) return s;
         const status = (s.status || "").toString().toLowerCase();
         return status.includes("tolak") || status.includes("rejected")

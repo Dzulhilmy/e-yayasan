@@ -4,6 +4,7 @@ import { useRouter, useParams } from "next/navigation";
 import { ArrowLeft, Save } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/utils/supabase/client";
+import ImageUpload from "@/components/ImageUpload";
 
 export default function EditProgram() {
   const router = useRouter();
@@ -16,6 +17,7 @@ export default function EditProgram() {
     category: "Pendidikan",
     description: "",
     image_url: "",
+    featured_image_url: "",
     amount: "",
     is_active: true,
   });
@@ -37,6 +39,7 @@ export default function EditProgram() {
           category: data.category || "Pendidikan",
           description: data.description || "",
           image_url: data.image_url || "",
+          featured_image_url: data.featured_image_url || "",
           amount: data.amount ?? "",
           is_active: data.is_active ?? true,
         });
@@ -68,6 +71,7 @@ export default function EditProgram() {
           category: formData.category,
           description: formData.description,
           image_url: formData.image_url,
+          featured_image_url: formData.featured_image_url || null,
           amount: programAmount,
           is_active: formData.is_active,
         })
@@ -256,35 +260,24 @@ export default function EditProgram() {
               }}
             />
           </div>
-          <div style={{ gridColumn: "1 / -1" }}>
-            <label
-              style={{
-                display: "block",
-                marginBottom: 8,
-                fontSize: "0.85rem",
-                color: "var(--text-muted)",
-              }}
-            >
-              Image URL
-            </label>
-            <input
-              type="url"
-              value={formData.image_url}
-              onChange={(e) =>
-                setFormData({ ...formData, image_url: e.target.value })
-              }
-              placeholder="https://example.com/image.jpg"
-              style={{
-                width: "100%",
-                padding: "12px 16px",
-                background: "var(--navy-mid)",
-                border: "1px solid var(--border)",
-                borderRadius: 12,
-                color: "#fff",
-                outline: "none",
-              }}
-            />
-          </div>
+          <ImageUpload
+            label="Gambar Kecil Program (Admin Thumbnail)"
+            hint="(Thumbnail untuk paparan senarai admin)"
+            value={formData.image_url}
+            bucket="profile-avatars"
+            folder="programs/thumbnails"
+            onChange={(url) => setFormData({ ...formData, image_url: url })}
+          />
+
+          <ImageUpload
+            label="Gambar Utama Program (Featured Image)"
+            hint="(Paparan Utama Halaman Hadapan)"
+            accent="#F5A623"
+            value={formData.featured_image_url}
+            bucket="profile-avatars"
+            folder="programs/featured"
+            onChange={(url) => setFormData({ ...formData, featured_image_url: url })}
+          />
           <div style={{ gridColumn: "1 / -1" }}>
             <label
               style={{

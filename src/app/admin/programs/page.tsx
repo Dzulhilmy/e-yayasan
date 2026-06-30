@@ -150,26 +150,11 @@ export default function AdminPrograms() {
               >
                 Jumlah
               </th>
-              <th
-                style={{
-                  padding: "16px 24px",
-                  fontWeight: 600,
-                  color: "var(--text-muted)",
-                  fontSize: "0.85rem",
-                }}
-              >
-                Status
+              <th style={{ padding: "16px 24px", fontWeight: 600, color: "var(--text-muted)", fontSize: "0.85rem" }}>Status</th>
+              <th style={{ padding: "16px 24px", fontWeight: 600, color: "var(--text-muted)", fontSize: "0.85rem" }}>
+                Featured Image <span style={{ color: "#F5A623", fontSize: "0.75rem" }}>(Hadapan)</span>
               </th>
-              <th
-                style={{
-                  padding: "16px 24px",
-                  fontWeight: 600,
-                  color: "var(--text-muted)",
-                  fontSize: "0.85rem",
-                }}
-              >
-                Tindakan
-              </th>
+              <th style={{ padding: "16px 24px", fontWeight: 600, color: "var(--text-muted)", fontSize: "0.85rem" }}>Tindakan</th>
             </tr>
           </thead>
           <tbody>
@@ -279,25 +264,18 @@ export default function AdminPrograms() {
                   </td>
                   <td style={{ padding: "16px 24px" }}>
                     {p.is_active ? (
-                      <span
-                        style={{
-                          color: "var(--green)",
-                          fontSize: "0.85rem",
-                          fontWeight: 500,
-                        }}
-                      >
-                        Aktif
-                      </span>
+                      <span style={{ color: "var(--green)", fontSize: "0.85rem", fontWeight: 500 }}>Aktif</span>
                     ) : (
-                      <span
-                        style={{
-                          color: "var(--text-muted)",
-                          fontSize: "0.85rem",
-                          fontWeight: 500,
-                        }}
-                      >
-                        Ditutup
-                      </span>
+                      <span style={{ color: "var(--text-muted)", fontSize: "0.85rem", fontWeight: 500 }}>Ditutup</span>
+                    )}
+                  </td>
+                  <td style={{ padding: "16px 24px" }}>
+                    {p.featured_image_url ? (
+                      <div style={{ width: 72, height: 48, borderRadius: 8, overflow: "hidden", border: "1px solid var(--border)" }}>
+                        <img src={p.featured_image_url} alt="featured" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      </div>
+                    ) : (
+                      <span style={{ fontSize: "0.78rem", color: "var(--text-muted)", fontStyle: "italic" }}>Tiada</span>
                     )}
                   </td>
                   <td style={{ padding: "16px 24px" }}>
