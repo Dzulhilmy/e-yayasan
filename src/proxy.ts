@@ -33,7 +33,7 @@ import { NextRequest, NextResponse } from 'next/server';
 // Body parsing belongs in the route/Server Action, not middleware.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   // Example of safe, legitimate middleware logic — auth redirect based on cookie,
   // not body inspection:
   const sessionCookie = request.cookies.get('sb-access-token');
