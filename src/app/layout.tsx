@@ -12,6 +12,11 @@ export const metadata: Metadata = {
     description: 'Platform digital bersepadu untuk rakyat Perak',
     siteName: 'e-YP Yayasan Perak',
   },
+  icons: {
+    icon: 'public/logo-yp.png',
+    apple: 'public/logo-yp.png',
+  },
+    
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
