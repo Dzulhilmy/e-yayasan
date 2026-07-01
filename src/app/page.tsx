@@ -359,7 +359,7 @@ export default function HomePage() {
               <Link href="/login" className="btn btn-secondary btn-lg">Semak Status Saya<ArrowRight size={18} /></Link>
             </div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 24, marginTop: 48, flexWrap: "wrap", opacity: animated ? 1 : 0, transition: "all 0.7s ease 0.4s" }}>
-              {["Selamat & Terenkripsi", "Data Disimpan Tempatan", "Disahkan Kerajaan"].map((b) => (
+              {["Selamat & Terenkripsi", "Data Disimpan Tempatan"].map((b) => (
                 <div key={b} style={{ display: "flex", alignItems: "center", gap: 7, color: "var(--text-muted)", fontSize: "0.82rem" }}>
                   <CheckCircle size={14} style={{ color: "var(--green)" }} />{b}
                 </div>
