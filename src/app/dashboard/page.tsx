@@ -42,33 +42,25 @@ const notifications = [
 ];
 
 const getStatusColor = (status: string) => {
-  switch (status) {
-    case "submitted":
-      return "var(--teal)";
-    case "processing":
-      return "var(--gold)";
-    case "approved":
-      return "var(--green)";
-    case "rejected":
-      return "var(--red)";
-    default:
-      return "var(--text-muted)";
-  }
+  const s = (status || "").toString().toLowerCase();
+  if (s.includes("submitted") || s.includes("dihantar")) return "var(--teal)";
+  if (s.includes("processing") || s.includes("semak") || s.includes("disemak"))
+    return "var(--gold)";
+  if (s.includes("approved") || s.includes("diluluskan")) return "var(--green)";
+  if (s.includes("rejected") || s.includes("tolak") || s.includes("ditolak"))
+    return "var(--red)";
+  return "var(--text-muted)";
 };
 
 const getStatusLabel = (status: string) => {
-  switch (status) {
-    case "submitted":
-      return "Dihantar";
-    case "processing":
-      return "Dalam Proses";
-    case "approved":
-      return "Diluluskan";
-    case "rejected":
-      return "Ditolak";
-    default:
-      return status;
-  }
+  const s = (status || "").toString().toLowerCase();
+  if (s.includes("submitted") || s.includes("dihantar")) return "Dihantar";
+  if (s.includes("processing") || s.includes("semak") || s.includes("disemak"))
+    return "Disemak";
+  if (s.includes("approved") || s.includes("diluluskan")) return "Diluluskan";
+  if (s.includes("rejected") || s.includes("tolak") || s.includes("ditolak"))
+    return "Ditolak";
+  return status || "Menunggu";
 };
 
 const getSteps = (app: any) => {
@@ -85,32 +77,52 @@ const getSteps = (app: any) => {
 
   const created = app.created_at ? fmt(app.created_at) : "—";
   const reviewed = app.reviewed_at ? fmt(app.reviewed_at) : null;
-  const updated = app.updated_at ? fmt(app.updated_at) : null;
-  const status = (app.status || "").toLowerCase();
+  const approved = app.approved_at ? fmt(app.approved_at) : null;
+  const rejected = app.rejected_at ? fmt(app.rejected_at) : null;
+  const status = (app.status || "").toString().toLowerCase();
+
+  const isReviewed = /reviewed|disemak/.test(status) || Boolean(reviewed);
+  const isApproved = /approved|diluluskan/.test(status);
+  const isRejected = /rejected|ditolak/.test(status);
+
+  const isWaiting = !isRejected && !isApproved && isReviewed;
+  const hasReview = isReviewed || isApproved || isRejected;
 
   const steps = [
-    { label: "Dihantar", done: true, date: created },
+    {
+      label: "Dihantar",
+      state: "done",
+      date: created,
+    },
     {
       label: "Disemak",
-      done: status !== "submitted",
-      date: reviewed ?? (status !== "submitted" ? (updated ?? "Selesai") : "—"),
-    },
-    {
-      label: "Menunggu Kelulusan",
-      done: status === "approved" || status === "rejected",
-      date:
-        status === "approved" || status === "rejected"
-          ? (updated ?? "Selesai")
-          : status === "processing"
-            ? (updated ?? "Sedang Menunggu")
-            : "—",
-    },
-    {
-      label: "Diluluskan",
-      done: status === "approved",
-      date: status === "approved" ? (updated ?? "Selesai") : "—",
+      state: hasReview ? "done" : isWaiting ? "active" : "pending",
+      date: reviewed || (hasReview ? approved || rejected || "Selesai" : "—"),
     },
   ];
+
+  if (isRejected) {
+    steps.push({
+      label: "Ditolak",
+      state: "done",
+      date: rejected || "—",
+    });
+  } else {
+    steps.push({
+      label: "Menunggu Kelulusan",
+      state: isApproved ? "done" : isWaiting ? "active" : "pending",
+      date: isApproved
+        ? approved || "Selesai"
+        : isWaiting
+          ? "Sedang Menunggu"
+          : "—",
+    });
+    steps.push({
+      label: "Diluluskan",
+      state: isApproved ? "done" : "pending",
+      date: approved || "—",
+    });
+  }
 
   return steps;
 };
@@ -130,7 +142,12 @@ function isApprovedStatus(status: string) {
 
 function isProcessingStatus(status: string) {
   const s = (status || "").toLowerCase();
-  return s === "processing" || s === "submitted" || s.includes("proses") || s.includes("semak");
+  return (
+    s === "processing" ||
+    s === "submitted" ||
+    s.includes("proses") ||
+    s.includes("semak")
+  );
 }
 
 export default function DashboardPage() {
@@ -147,19 +164,41 @@ export default function DashboardPage() {
   // whenever applicationsList changes (initial load OR realtime event).
   const liveStats = useMemo(() => {
     const active = applicationsList.length;
-    const approved = applicationsList.filter((a) => isApprovedStatus(a.status)).length;
-    const processing = applicationsList.filter((a) => isProcessingStatus(a.status)).length;
+    const approved = applicationsList.filter((a) =>
+      isApprovedStatus(a.status),
+    ).length;
+    const processing = applicationsList.filter((a) =>
+      isProcessingStatus(a.status),
+    ).length;
     const totalAmount = applicationsList
       .filter((a) => isApprovedStatus(a.status))
       .reduce((sum, a) => sum + parseAmount(a.amount), 0);
 
     return [
-      { label: "Permohonan Aktif", value: String(active), icon: FileText, color: "var(--gold)" },
-      { label: "Diluluskan", value: String(approved), icon: CheckCircle, color: "var(--green)" },
-      { label: "Dalam Proses", value: String(processing), icon: Clock, color: "var(--teal)" },
+      {
+        label: "Permohonan Aktif",
+        value: String(active),
+        icon: FileText,
+        color: "var(--gold)",
+      },
+      {
+        label: "Diluluskan",
+        value: String(approved),
+        icon: CheckCircle,
+        color: "var(--green)",
+      },
+      {
+        label: "Dalam Proses",
+        value: String(processing),
+        icon: Clock,
+        color: "var(--teal)",
+      },
       {
         label: "Jumlah Bantuan",
-        value: totalAmount > 0 ? `RM ${totalAmount.toLocaleString("ms-MY")}` : "RM 0",
+        value:
+          totalAmount > 0
+            ? `RM ${totalAmount.toLocaleString("ms-MY")}`
+            : "RM 0",
         icon: TrendingUp,
         color: "var(--purple)",
       },
@@ -232,21 +271,32 @@ export default function DashboardPage() {
     let channel: ReturnType<typeof supabase.channel> | null = null;
 
     (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
 
       channel = supabase
         .channel(`applications-user-${user.id}`)
         .on(
           "postgres_changes",
-          { event: "*", schema: "public", table: "applications", filter: `user_id=eq.${user.id}` },
+          {
+            event: "*",
+            schema: "public",
+            table: "applications",
+            filter: `user_id=eq.${user.id}`,
+          },
           (payload) => {
             setApplicationsList((prev) => {
               if (payload.eventType === "INSERT") {
                 return [payload.new as any, ...prev];
               }
               if (payload.eventType === "UPDATE") {
-                return prev.map((a) => (a.id === (payload.new as any).id ? { ...a, ...payload.new } : a));
+                return prev.map((a) =>
+                  a.id === (payload.new as any).id
+                    ? { ...a, ...payload.new }
+                    : a,
+                );
               }
               if (payload.eventType === "DELETE") {
                 return prev.filter((a) => a.id !== (payload.old as any).id);
@@ -258,9 +308,13 @@ export default function DashboardPage() {
             // application is the one that just changed (e.g. admin just
             // approved it while the user has it open).
             if (payload.eventType === "UPDATE") {
-              setSelected((sel: any) => (sel && sel.id === (payload.new as any).id ? { ...sel, ...payload.new } : sel));
+              setSelected((sel: any) =>
+                sel && sel.id === (payload.new as any).id
+                  ? { ...sel, ...payload.new }
+                  : sel,
+              );
             }
-          }
+          },
         )
         .subscribe();
     })();
@@ -620,86 +674,114 @@ export default function DashboardPage() {
                   Penjejak Kemajuan
                 </h3>
                 <div style={{ position: "relative" }}>
-                  {stepsList.map((step: any, i: number) => (
-                    <div
-                      key={i}
-                      style={{
-                        display: "flex",
-                        alignItems: "flex-start",
-                        gap: 16,
-                        paddingBottom: i < stepsList.length - 1 ? 28 : 0,
-                        position: "relative",
-                      }}
-                    >
-                      {i < stepsList.length - 1 && (
-                        <div
-                          style={{
-                            position: "absolute",
-                            left: 15,
-                            top: 32,
-                            width: 2,
-                            height: 28,
-                            background: step.done
-                              ? "var(--green)"
-                              : "var(--border)",
-                          }}
-                        />
-                      )}
+                  {stepsList.map((step: any, i: number) => {
+                    const active = step.state === "active";
+                    const done = step.state === "done";
+                    const pending = step.state === "pending";
+                    const stepColor = done
+                      ? "var(--green)"
+                      : active
+                        ? "var(--gold)"
+                        : "var(--border)";
+
+                    return (
                       <div
+                        key={i}
                         style={{
-                          width: 32,
-                          height: 32,
-                          borderRadius: "50%",
-                          flexShrink: 0,
                           display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          background: step.done
-                            ? "rgba(16,185,129,0.2)"
-                            : "var(--navy-light)",
-                          border: `2px solid ${step.done ? "var(--green)" : "var(--border)"}`,
+                          alignItems: "flex-start",
+                          gap: 16,
+                          paddingBottom: i < stepsList.length - 1 ? 28 : 0,
+                          position: "relative",
                         }}
                       >
-                        {step.done ? (
-                          <CheckCircle
-                            size={16}
-                            style={{ color: "var(--green)" }}
-                          />
-                        ) : (
+                        {i < stepsList.length - 1 && (
                           <div
                             style={{
-                              width: 8,
-                              height: 8,
-                              borderRadius: "50%",
-                              background: "var(--border)",
+                              position: "absolute",
+                              left: 15,
+                              top: 32,
+                              width: 2,
+                              height: 28,
+                              background:
+                                done || active ? stepColor : "var(--border)",
                             }}
                           />
                         )}
-                      </div>
-                      <div style={{ flex: 1, paddingTop: 4 }}>
                         <div
                           style={{
-                            fontWeight: 600,
-                            fontSize: "0.92rem",
-                            color: step.done
-                              ? "var(--text-primary)"
-                              : "var(--text-muted)",
+                            width: 34,
+                            height: 34,
+                            borderRadius: "50%",
+                            flexShrink: 0,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            background: done
+                              ? "rgba(16,185,129,0.18)"
+                              : active
+                                ? "rgba(245,166,35,0.18)"
+                                : "var(--navy-light)",
+                            border: `2px solid ${stepColor}`,
                           }}
                         >
-                          {step.label}
+                          {done ? (
+                            <CheckCircle
+                              size={16}
+                              style={{ color: stepColor }}
+                            />
+                          ) : active ? (
+                            <Clock size={16} style={{ color: stepColor }} />
+                          ) : (
+                            <div
+                              style={{
+                                width: 8,
+                                height: 8,
+                                borderRadius: "50%",
+                                background: "var(--border)",
+                              }}
+                            />
+                          )}
                         </div>
-                        <div
-                          style={{
-                            fontSize: "0.78rem",
-                            color: "var(--text-muted)",
-                            marginTop: 2,
-                          }}
-                        >
-                          {step.date}
+                        <div style={{ flex: 1, paddingTop: 4 }}>
+                          <div
+                            style={{
+                              fontWeight: 600,
+                              fontSize: "0.92rem",
+                              color:
+                                done || active
+                                  ? "var(--text-primary)"
+                                  : "var(--text-muted)",
+                            }}
+                          >
+                            {step.label}
+                            {active ? (
+                              <span
+                                style={{
+                                  marginLeft: 8,
+                                  fontSize: "0.72rem",
+                                  color: "var(--gold)",
+                                }}
+                              >
+                                Sedang Berjalan
+                              </span>
+                            ) : null}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: "0.78rem",
+                              color: done
+                                ? "var(--text-muted)"
+                                : "var(--text-secondary)",
+                              marginTop: 2,
+                            }}
+                          >
+                            {step.date}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 <div

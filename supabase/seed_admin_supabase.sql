@@ -118,11 +118,35 @@ CREATE TABLE IF NOT EXISTS public.applications (
   program_id UUID REFERENCES public.programs(id) ON DELETE SET NULL,
   data JSONB DEFAULT '{}'::jsonb NOT NULL,
   status TEXT DEFAULT 'submitted'::text NOT NULL,
+  reviewed_at TIMESTAMP WITH TIME ZONE,
+  approved_at TIMESTAMP WITH TIME ZONE,
+  rejected_at TIMESTAMP WITH TIME ZONE,
   reference_number TEXT UNIQUE NOT NULL,
   ref TEXT,
   steps JSONB DEFAULT '[]'::jsonb,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+ALTER TABLE IF EXISTS public.applications
+  ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMP WITH TIME ZONE,
+  ADD COLUMN IF NOT EXISTS approved_at TIMESTAMP WITH TIME ZONE,
+  ADD COLUMN IF NOT EXISTS rejected_at TIMESTAMP WITH TIME ZONE;
+
+-- Query to show the status timestamp for each application:
+-- SELECT id,
+--        reference_number,
+--        status,
+--        reviewed_at,
+--        approved_at,
+--        rejected_at,
+--        CASE
+--          WHEN status IN ('disemak','reviewed') THEN reviewed_at
+--          WHEN status IN ('diluluskan','approved') THEN approved_at
+--          WHEN status IN ('ditolak','rejected') THEN rejected_at
+--          ELSE NULL
+--        END AS status_timestamp
+-- FROM public.applications
+-- ORDER BY created_at DESC;
 
 -- =====================================================================
 -- INDEXES & PERFORMANCE OPTIMIZATION

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
+import { sendEmail } from '@/lib/mailer'
 
 function makeRef() {
   const year = new Date().getFullYear()
@@ -42,6 +43,16 @@ export async function POST(req: Request) {
     .select()
     .single()
 
+  const sendAppEmail = async (recipientEmail: string | undefined) => {
+    if (!recipientEmail) return
+    await sendEmail({
+      to: recipientEmail,
+      subject: 'Permohonan anda telah diterima',
+      text: `Terima kasih. Permohonan anda untuk ${programTitle} telah diterima. Nombor rujukan anda adalah ${reference_number}.`,
+      html: `<p>Assalamualaikum / Salam Sejahtera,</p><p>Permohonan anda untuk <strong>${programTitle}</strong> telah berjaya diterima.</p><p><strong>Nombor rujukan:</strong> ${reference_number}</p><p>Sila semak status permohonan anda melalui portal e-YP.</p>`,
+    })
+  }
+
   // If the insert fails because the `program` column doesn't exist in the
   // runtime DB schema (common when migrations/seed weren't applied), try
   // inserting using the `program_id` column instead.
@@ -63,11 +74,21 @@ export async function POST(req: Request) {
         .single();
 
       if (error2) return NextResponse.json({ error: error2.message }, { status: 500 });
+      try {
+        await sendAppEmail(formData.email ?? user.email ?? undefined)
+      } catch (emailError) {
+        console.error('Email notification failed on fallback insert:', emailError)
+      }
       return NextResponse.json({ application: { ...inserted2, ref: inserted2.reference_number ?? inserted2.ref ?? reference_number } });
     }
 
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  try {
+    await sendAppEmail(formData.email ?? user.email ?? undefined)
+  } catch (emailError) {
+    console.error('Email notification failed on primary insert:', emailError)
+  }
   return NextResponse.json({ application: { ...inserted, ref: inserted.reference_number ?? inserted.ref } })
 }

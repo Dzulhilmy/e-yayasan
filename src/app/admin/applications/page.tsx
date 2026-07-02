@@ -21,6 +21,7 @@ export default function AdminApplicationsPage() {
   const [selected, setSelected] = useState<AppRow | null>(null);
   const [docs, setDocs] = useState<any[]>([]);
   const [deleting, setDeleting] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -119,9 +120,15 @@ export default function AdminApplicationsPage() {
     try {
       const res = await fetch(`/api/applications/admin/delete?id=${appId}`, {
         method: "DELETE",
+        credentials: "include",
       });
       if (!res.ok) {
-        console.error("delete failed", await res.text());
+        const text = await res.text();
+        const message = text.includes("Forbidden")
+          ? "Akses ditolak. Sila log masuk semula sebagai admin."
+          : text;
+        console.error("delete failed", message);
+        alert(message);
         return;
       }
       setApps((prev) => prev.filter((app) => app.id !== appId));
@@ -147,9 +154,15 @@ export default function AdminApplicationsPage() {
     try {
       const res = await fetch("/api/applications/admin/delete?bulk=true", {
         method: "DELETE",
+        credentials: "include",
       });
       if (!res.ok) {
-        console.error("bulk delete failed", await res.text());
+        const text = await res.text();
+        const message = text.includes("Forbidden")
+          ? "Akses ditolak. Sila log masuk semula sebagai admin."
+          : text;
+        console.error("bulk delete failed", message);
+        alert(message);
         return;
       }
       setApps((prev) =>
@@ -174,6 +187,8 @@ export default function AdminApplicationsPage() {
   }
 
   async function updateStatus(appId: string, status: string) {
+    if (updatingStatus) return;
+    setUpdatingStatus(true);
     try {
       const res = await fetch("/api/applications/admin/update", {
         method: "POST",
@@ -191,11 +206,33 @@ export default function AdminApplicationsPage() {
       setSelected((s: any) => (s && s.id === appId ? (json.data ?? s) : s));
     } catch (e) {
       console.error(e);
+    } finally {
+      setUpdatingStatus(false);
     }
   }
 
   function statusLabel(status?: string) {
-    return status ?? "Menunggu";
+    const s = (status || "").toString().toLowerCase().trim();
+    if (s.includes("lulus") || s.includes("approved") || s === "diluluskan")
+      return "Diluluskan";
+    if (s.includes("tolak") || s.includes("rejected") || s === "ditolak")
+      return "Ditolak";
+    if (s.includes("semak") || s.includes("reviewed") || s === "disemak")
+      return "Disemak";
+    if (s === "submitted") return "Dihantar";
+    return "Menunggu";
+  }
+
+  function getStatusTimestamp(app?: AppRow) {
+    if (!app?.status) return null;
+    const status = app.status.toString().toLowerCase();
+    if (status.includes("diluluskan") || status.includes("approved"))
+      return app.approved_at;
+    if (status.includes("ditolak") || status.includes("rejected"))
+      return app.rejected_at;
+    if (status.includes("disemak") || status.includes("reviewed"))
+      return app.reviewed_at;
+    return null;
   }
 
   function formatFieldLabel(key: string) {
@@ -471,6 +508,7 @@ export default function AdminApplicationsPage() {
                 <div style={{ display: "flex", gap: 8 }}>
                   <button
                     onClick={() => updateStatus(selected.id, "disemak")}
+                    disabled={updatingStatus}
                     style={{
                       display: "flex",
                       alignItems: "center",
@@ -481,13 +519,15 @@ export default function AdminApplicationsPage() {
                       border: "1px solid var(--border)",
                       background: "transparent",
                       color: "var(--text-muted)",
-                      cursor: "pointer",
+                      cursor: updatingStatus ? "not-allowed" : "pointer",
+                      opacity: updatingStatus ? 0.6 : 1,
                     }}
                   >
                     <CheckCircle size={14} /> Semak
                   </button>
                   <button
                     onClick={() => updateStatus(selected.id, "ditolak")}
+                    disabled={updatingStatus}
                     style={{
                       display: "flex",
                       alignItems: "center",
@@ -498,13 +538,15 @@ export default function AdminApplicationsPage() {
                       border: "1px solid rgba(239,68,68,0.3)",
                       background: "rgba(239,68,68,0.08)",
                       color: "#f87171",
-                      cursor: "pointer",
+                      cursor: updatingStatus ? "not-allowed" : "pointer",
+                      opacity: updatingStatus ? 0.6 : 1,
                     }}
                   >
                     <XCircle size={14} /> Tolak
                   </button>
                   <button
                     onClick={() => updateStatus(selected.id, "diluluskan")}
+                    disabled={updatingStatus}
                     style={{
                       display: "flex",
                       alignItems: "center",
@@ -515,7 +557,8 @@ export default function AdminApplicationsPage() {
                       border: "1px solid rgba(34,197,94,0.3)",
                       background: "rgba(34,197,94,0.08)",
                       color: "#4ade80",
-                      cursor: "pointer",
+                      cursor: updatingStatus ? "not-allowed" : "pointer",
+                      opacity: updatingStatus ? 0.6 : 1,
                     }}
                   >
                     <CheckCircle size={14} /> Lulus
@@ -562,15 +605,30 @@ export default function AdminApplicationsPage() {
                 </div>
                 <div
                   style={{
-                    color: statusStyles[statusVariant(selected.status)].color,
-                    opacity: 0.75,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 4,
                     marginTop: 4,
                     fontSize: 12.5,
                   }}
                 >
-                  {selected.created_at
-                    ? new Date(selected.created_at).toLocaleString()
-                    : ""}
+                  {selected.created_at ? (
+                    <div style={{ color: "var(--text-muted)" }}>
+                      Dibuat: {new Date(selected.created_at).toLocaleString()}
+                    </div>
+                  ) : null}
+                  {getStatusTimestamp(selected) ? (
+                    <div
+                      style={{
+                        color:
+                          statusStyles[statusVariant(selected.status)].color,
+                        opacity: 0.85,
+                      }}
+                    >
+                      {statusLabel(selected.status)}:{" "}
+                      {new Date(getStatusTimestamp(selected)!).toLocaleString()}
+                    </div>
+                  ) : null}
                 </div>
               </div>
 

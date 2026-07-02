@@ -18,6 +18,11 @@ import {
   fetchProfileWithFallback,
   fetchProgramsWithRetry,
 } from "@/utils/supabase/helpers";
+import {
+  browserNotificationsSupported,
+  requestBrowserNotificationPermission,
+  showBrowserNotification,
+} from "@/utils/browserNotifications";
 
 // Infer vault doc type from a required document label string
 function inferVaultType(label: string): string {
@@ -107,6 +112,9 @@ export default function ApplyPage() {
     { id: string; title: string; required_documents: string[] }[]
   >([]);
   const [programsLoading, setProgramsLoading] = useState(true);
+  const [browserNotificationState, setBrowserNotificationState] = useState<
+    "default" | "granted" | "denied" | "unsupported"
+  >("default");
 
   // Direct upload states
   const [uploadingDocTypes, setUploadingDocTypes] = useState<
@@ -206,6 +214,11 @@ export default function ApplyPage() {
 
   // ── Fetch profile on mount ──────────────────────────────────────────────────
   useEffect(() => {
+    const supported = browserNotificationsSupported();
+    setBrowserNotificationState(
+      supported ? Notification.permission : "unsupported",
+    );
+
     const fetchProfile = async () => {
       setProfileLoading(true);
       try {
@@ -269,6 +282,11 @@ export default function ApplyPage() {
     fetchPrograms();
   }, []);
 
+  const handleRequestPopupPermission = async () => {
+    const permission = await requestBrowserNotificationPermission();
+    setBrowserNotificationState(permission);
+  };
+
   // ── Fetch vault docs via API when reaching step 2 ──────────────────────────────
   useEffect(() => {
     if (step !== 2) return;
@@ -324,9 +342,21 @@ export default function ApplyPage() {
       } catch {}
       setSubmittedRef(ref);
       setSubmitted(true);
+      if (browserNotificationState === "granted") {
+        showBrowserNotification(
+          "Permohonan dihantar",
+          `Permohonan anda untuk ${form.program} telah dihantar. Nombor rujukan: ${ref}`,
+        );
+      }
     } catch (err) {
       console.error(err);
       alert("Hantar gagal");
+      if (browserNotificationState === "granted") {
+        showBrowserNotification(
+          "Hantar gagal",
+          "Terdapat masalah semasa menghantar permohonan. Sila cuba semula.",
+        );
+      }
     }
   };
 
@@ -682,6 +712,64 @@ export default function ApplyPage() {
                 >
                   Semua maklumat disimpan dengan selamat dan disulitkan.
                 </p>
+                {browserNotificationState !== "unsupported" && (
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 12,
+                      padding: "16px",
+                      borderRadius: 14,
+                      border: "1px solid var(--border)",
+                      background:
+                        browserNotificationState === "granted"
+                          ? "rgba(16,185,129,0.08)"
+                          : "rgba(245,146,39,0.08)",
+                      marginBottom: 24,
+                    }}
+                  >
+                    <div>
+                      <div
+                        style={{
+                          color: "#fff",
+                          fontSize: "0.9rem",
+                          fontWeight: 600,
+                        }}
+                      >
+                        Pemberitahuan Pop-up
+                      </div>
+                      <div
+                        style={{
+                          color: "var(--text-muted)",
+                          fontSize: "0.8rem",
+                        }}
+                      >
+                        {browserNotificationState === "granted"
+                          ? "Notifikasi segera akan dipaparkan di peranti anda selepas penghantaran."
+                          : browserNotificationState === "denied"
+                            ? "Sila benarkan notifikasi dalam tetapan penyemak imbas anda."
+                            : "Aktifkan notifikasi pop-up untuk makluman segera."}
+                      </div>
+                    </div>
+                    {browserNotificationState !== "granted" && (
+                      <button
+                        onClick={handleRequestPopupPermission}
+                        style={{
+                          background: "var(--gold)",
+                          color: "#000",
+                          border: "none",
+                          borderRadius: 10,
+                          padding: "10px 16px",
+                          fontWeight: 700,
+                          cursor: "pointer",
+                        }}
+                      >
+                        Aktifkan
+                      </button>
+                    )}
+                  </div>
+                )}
                 <div
                   style={{
                     display: "grid",

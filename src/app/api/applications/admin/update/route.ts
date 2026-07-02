@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
+import { sendEmail } from '@/lib/mailer'
 
 export async function POST(req: Request) {
   try {
@@ -30,14 +31,46 @@ export async function POST(req: Request) {
 
     if (!allowed) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-    const updates: any = { status }
-    const now = new Date().toISOString()
-    if (status === 'disemak' || status === 'reviewed') updates.reviewed_at = now
-    if (status === 'diluluskan' || status === 'approved') updates.approved_at = now
-    if (note) updates.admin_note = note
+    const STATUS_MAP: Record<string, string> = {
+      reviewed: 'disemak',
+      approved: 'diluluskan',
+      rejected: 'ditolak',
+    }
+    const normalizedStatus = (status || '').toString().trim().toLowerCase()
+    const finalStatus = STATUS_MAP[normalizedStatus] ?? normalizedStatus
+    const allowedStatuses = ['disemak', 'ditolak', 'diluluskan', 'submitted']
+    if (!allowedStatuses.includes(finalStatus)) {
+      return NextResponse.json({ error: 'invalid status' }, { status: 400 })
+    }
+
+    const updates: any = { status: finalStatus }
 
     const { data, error } = await supabase.from('applications').update(updates).eq('id', id).select().single()
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    const updatedApp = data as any
+    let recipientEmail = updatedApp?.data?.email
+    if (!recipientEmail && updatedApp?.user_id) {
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('user_id', updatedApp.user_id)
+        .single()
+      recipientEmail = profileData?.email
+    }
+
+    if (recipientEmail) {
+      try {
+        await sendEmail({
+          to: recipientEmail,
+          subject: `Kemas kini permohonan anda: ${status}`,
+          text: `Permohonan anda dengan nombor rujukan ${updatedApp.reference_number ?? '—'} telah dikemas kini kepada status ${status}. ${note ?? ''}`,
+          html: `<p>Assalamualaikum / Salam Sejahtera,</p><p>Status permohonan anda telah dikemas kini kepada <strong>${status}</strong>.</p><p><strong>Nombor rujukan:</strong> ${updatedApp.reference_number ?? '—'}</p><p>${note ? `Nota admin: ${note}` : 'Tiada nota tambahan.'}</p>`,
+        })
+      } catch (emailError) {
+        console.error('Email notification failed on admin update:', emailError)
+      }
+    }
 
     return NextResponse.json({ data })
   } catch (err) {
